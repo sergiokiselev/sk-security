@@ -11,8 +11,10 @@ import java.io.Serializable;
 @Data
 public class VerifyDto implements Serializable {
 
-    private long userId;
+    private String sessionId;
 
     private String code;
+
+    private String exception;
 
 }

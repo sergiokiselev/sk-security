@@ -8,6 +8,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.IdGenerator;
+import org.springframework.util.JdkIdGenerator;
+import org.springframework.util.SimpleIdGenerator;
 
 @SpringBootApplication
 @Import({SecurityConfig.class})
@@ -20,6 +23,11 @@ public class GoogleAuth extends SpringBootServletInitializer {
 	@Bean
 	public PasswordEncoder getEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+
+	@Bean
+	public IdGenerator getGenerator() {
+		return new JdkIdGenerator();
 	}
 
 }

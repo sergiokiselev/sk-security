@@ -27,10 +27,12 @@ public class InitDatabase implements ApplicationListener<ContextRefreshedEvent> 
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		if (this.userRepository.count() == 0) {
 			User adminUser = new User();
-			adminUser.setEmail("test@test.ch");
+			adminUser.setEmail("superadmin@gmail.com");
 			adminUser.setSecret("IB6EFEQKE7U2TQIB");
 			adminUser.setPassword(passwordEncoder.encode("password"));
 			userRepository.save(adminUser);
+			User seorgy = new User("sergio.kiselev509@gmail.com", passwordEncoder.encode("password"), null);
+			userRepository.save(seorgy);
 		}
 
 	}

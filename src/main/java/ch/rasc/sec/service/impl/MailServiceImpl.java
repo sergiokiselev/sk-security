@@ -31,6 +31,7 @@ public class MailServiceImpl implements MailService {
             helper.setTo(to);
             helper.setText(body, true);
             System.err.println(body);
+
             javaMailSender.send(message);
         } catch (Exception e) {
             log.warn("Exception while sending mail", e);

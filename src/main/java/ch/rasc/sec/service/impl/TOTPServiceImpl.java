@@ -1,6 +1,6 @@
 package ch.rasc.sec.service.impl;
 
-import ch.rasc.sec.service.GoogleAuthenticatorService;
+import ch.rasc.sec.service.TOTPService;
 import org.apache.commons.codec.binary.Base32;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +15,7 @@ import java.security.NoSuchAlgorithmException;
  * Date: 2/21/2016.
  */
 @Service
-public class GoogleAuthenticatorServiceImpl implements GoogleAuthenticatorService {
+public class TOTPServiceImpl implements TOTPService {
 
     @Override
     public boolean verifyCode(String secret, long code, int variance)
@@ -33,7 +33,6 @@ public class GoogleAuthenticatorServiceImpl implements GoogleAuthenticatorServic
     @Override
     public long getCode(byte[] secret, long timeIndex)
             throws NoSuchAlgorithmException, InvalidKeyException {
-        System.out.println(timeIndex);
         SecretKeySpec signKey = new SecretKeySpec(secret, "HmacSHA1");
         ByteBuffer buffer = ByteBuffer.allocate(8);
         buffer.putLong(timeIndex);

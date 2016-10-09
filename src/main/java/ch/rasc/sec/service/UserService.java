@@ -1,6 +1,7 @@
 package ch.rasc.sec.service;
 
 import ch.rasc.sec.dto.UserDto;
+import ch.rasc.sec.dto.VerifyDto;
 import org.hibernate.validator.constraints.NotBlank;
 
 import java.security.InvalidKeyException;
@@ -11,9 +12,7 @@ import java.security.NoSuchAlgorithmException;
  * Date: 2/21/2016.
  */
 public interface UserService {
-    boolean handleLogin(@NotBlank String login, @NotBlank String password) throws InvalidKeyException, NoSuchAlgorithmException;
+    VerifyDto handleLogin(@NotBlank String login, @NotBlank String password) throws InvalidKeyException, NoSuchAlgorithmException;
 
-    long findIdByEmail(@NotBlank String email);
-
-    boolean verifyCode(long userId, String code) throws NoSuchAlgorithmException, InvalidKeyException;
+    String verifyCode(String sessionId, String code) throws NoSuchAlgorithmException, InvalidKeyException;
 }

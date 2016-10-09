@@ -1,7 +1,7 @@
 package ch.rasc.sec.service;
 
 import ch.rasc.sec.GenericTest;
-import ch.rasc.sec.service.impl.GoogleAuthenticatorServiceImpl;
+import ch.rasc.sec.service.impl.TOTPServiceImpl;
 import org.apache.commons.codec.binary.Base32;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -18,10 +18,10 @@ import static org.junit.Assert.*;
  * Date: 2/25/2016.
  */
 @IntegrationTest
-public class GoogleAuthenticatorServiceTest extends GenericTest {
+public class TOTPServiceTest extends GenericTest {
 
 
-    private GoogleAuthenticatorService authenticatorService = new GoogleAuthenticatorServiceImpl();
+    private TOTPService authenticatorService = new TOTPServiceImpl();
 
     @Test
     public void testCodeSize() throws InvalidKeyException, NoSuchAlgorithmException {

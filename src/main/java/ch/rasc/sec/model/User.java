@@ -31,14 +31,11 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 	@Column(nullable = false)
 	private String password;
 
-	@Column(nullable = false)
+	@Column
 	private String secret;
 
-//	@ManyToMany(fetch = FetchType.EAGER)
-//	@JoinTable(name = "security_users_to_authorities",
-//			joinColumns = @JoinColumn(name = "security_user_id", referencedColumnName = "id"),
-//			inverseJoinColumns = @JoinColumn(name = "authority_id", referencedColumnName = "id"))
-//	private Set<GrantedAuthority> authorities = new HashSet<>();
+	@Column(unique = true)
+	private String authSessionId;
 
 	public User(String login, String password, Set<GrantedAuthority> authorities) {
 		this.email = login;

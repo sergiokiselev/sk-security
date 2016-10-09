@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
  * User: NotePad.by
  * Date: 2/25/2016.
  */
-public interface GoogleAuthenticatorService {
+public interface TOTPService {
     boolean verifyCode(String secret, long code, int variance)
             throws InvalidKeyException, NoSuchAlgorithmException;
 
