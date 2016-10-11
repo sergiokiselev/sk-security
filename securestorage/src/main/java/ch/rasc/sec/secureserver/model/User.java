@@ -25,6 +25,9 @@ public class User extends AbstractPersistable<Long> {
     @Column(nullable = false)
     private String email;
 
+    @OneToMany(mappedBy = "ownerId")
+    private Set<Document> documents;
+
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(name = "user_group", joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "group_id", referencedColumnName = "id"))
     private Set<Group> groups;

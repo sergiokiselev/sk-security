@@ -3,11 +3,10 @@ package ch.rasc.sec.secureserver.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.NotBlank;
 import org.springframework.data.jpa.domain.AbstractPersistable;
-import org.springframework.security.core.GrantedAuthority;
 
 import javax.persistence.*;
+import java.util.Date;
 import java.util.Set;
 
 @Entity
@@ -27,15 +26,25 @@ public class Document extends AbstractPersistable<Long> {
     @Column
     private String link;
 
-    @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "doc_group", joinColumns = @JoinColumn(name = "doc_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "group_id", referencedColumnName = "id"))
-    private Set<Group> groups;
+    @Column
+    private Integer size;
+
+    @Column
+    private  Date created;
+
+    @Column
+    private Date lastModified;
+
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private User ownerId;
+
+    @OneToMany(mappedBy = "doc")
+    private Set<DocGroup> docGroups;
 
     public Document(String name, String link) {
         this.name = name;
         this.link = link;
-        //this.authorities = authorities;
     }
-
-
 }
