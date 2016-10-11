@@ -18,8 +18,6 @@ public class Group extends AbstractPersistable<Long> {
     @Column(nullable = false)
     private String name;
 
-
-
     @OneToMany(mappedBy = "group")
     private Set<DocGroup> docGroups;
 
@@ -29,7 +27,5 @@ public class Group extends AbstractPersistable<Long> {
 
     public Group(String name) {
         this.name = name;
-
-
     }
 }
