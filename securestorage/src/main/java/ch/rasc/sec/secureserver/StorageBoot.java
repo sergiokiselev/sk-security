@@ -1,6 +1,6 @@
 package ch.rasc.sec.secureserver;
 
-import ch.rasc.sec.secureserver.config.security.SecurityConfig;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.web.SpringBootServletInitializer;
