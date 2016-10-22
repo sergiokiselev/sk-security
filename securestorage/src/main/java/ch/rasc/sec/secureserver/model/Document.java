@@ -18,8 +18,6 @@ public class Document extends AbstractPersistable<Long> {
 
     private static final long serialVersionUID = 1L;
 
-
-
     @Column(nullable = false)
     private String name;
 
@@ -34,7 +32,6 @@ public class Document extends AbstractPersistable<Long> {
 
     @Column
     private Date lastModified;
-
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
