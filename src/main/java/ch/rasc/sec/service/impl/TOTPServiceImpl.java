@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 /**
  * User: NotePad.by
@@ -16,6 +17,14 @@ import java.security.NoSuchAlgorithmException;
  */
 @Service
 public class TOTPServiceImpl implements TOTPService {
+
+    @Override
+    public byte[] generateSecret() {
+        SecureRandom random = new SecureRandom();
+        byte bytes[] = new byte[20];
+        random.nextBytes(bytes);
+        return bytes;
+    }
 
     @Override
     public boolean verifyCode(String secret, long code, int variance)
@@ -46,6 +55,6 @@ public class TOTPServiceImpl implements TOTPService {
             truncatedHash <<= 8;
             truncatedHash |= hash[offset + i] & 0xff;
         }
-        return truncatedHash %= 1000000;
+        return truncatedHash % 1000000;
     }
 }

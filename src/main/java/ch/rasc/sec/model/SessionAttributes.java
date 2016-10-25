@@ -1,4 +1,4 @@
-package ch.rasc.sec.dto;
+package ch.rasc.sec.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -29,4 +29,6 @@ public class SessionAttributes implements Serializable {
     private boolean correctPassword;
 
     private String code;
+
+    private byte[] totpSecret;
 }
