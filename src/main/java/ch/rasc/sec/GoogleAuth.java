@@ -10,7 +10,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.IdGenerator;
 import org.springframework.util.JdkIdGenerator;
-import org.springframework.util.SimpleIdGenerator;
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
 
 @SpringBootApplication
 @Import({SecurityConfig.class})
@@ -28,6 +29,16 @@ public class GoogleAuth extends SpringBootServletInitializer {
 	@Bean
 	public IdGenerator getGenerator() {
 		return new JdkIdGenerator();
+	}
+
+	@Bean
+	public BASE64Encoder getBase64Encoder() {
+		return new BASE64Encoder();
+	}
+
+	@Bean
+	public BASE64Decoder getBase64Decoder() {
+		return new BASE64Decoder();
 	}
 
 }
