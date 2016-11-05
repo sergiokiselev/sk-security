@@ -22,13 +22,23 @@ public class LoginController {
 	@Autowired
 	private UserService userService;
 
+	@RequestMapping(value = "/login", method = RequestMethod.GET)
+	public RestResponse<String> getSomething() {
+		try {
+			return new RestResponse<>("Something");
+		} catch (Exception e) {
+			log.debug(e.getMessage());
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
+		}
+	}
+
 	@RequestMapping(value = "/login", method = RequestMethod.POST)
 	public RestResponse<VerifyDto> handleLogin(@RequestBody UserDto userDto) {
 		try {
 			return new RestResponse<>(userService.handleLogin(userDto.getLogin(), userDto.getPassword(),userDto.getSessionId()));
 		} catch (Exception e) {
-			log.debug(e.getLocalizedMessage());
-			return new RestResponse<>(new ErrorDto(e.getLocalizedMessage()));
+			log.debug(e.getMessage());
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
 		}
 	}
 
@@ -37,8 +47,8 @@ public class LoginController {
 		try {
 			return new RestResponse<>(userService.verifyCode(verifyDto.getSessionId(), verifyDto.getCode()));
 		} catch (Exception e) {
-			log.debug(e.getLocalizedMessage());
-			return new RestResponse<>(new ErrorDto(e.getLocalizedMessage()));
+			log.debug(e.getMessage());
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
 		}
 	}
 
@@ -47,8 +57,8 @@ public class LoginController {
 		try {
 			return new RestResponse<>(userService.getAesKey(rsaKey));
 		} catch (Exception e) {
-			log.debug(e.getLocalizedMessage());
-			return new RestResponse<>(new ErrorDto(e.getLocalizedMessage()));
+			log.debug(e.getMessage());
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
 		}
 	}
 
@@ -57,8 +67,8 @@ public class LoginController {
 		try {
 			return new RestResponse<>(userService.verifyToken(token));
 		} catch (Exception e) {
-			log.debug(e.getLocalizedMessage());
-			return new RestResponse<>(new ErrorDto(e.getLocalizedMessage()));
+			log.debug(e.getMessage());
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
 		}
 	}
 
