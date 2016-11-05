@@ -22,6 +22,16 @@ public class LoginController {
 	@Autowired
 	private UserService userService;
 
+	@RequestMapping(value = "/login", method = RequestMethod.GET)
+	public RestResponse<String> getSomething() {
+		try {
+			return new RestResponse<>("Something");
+		} catch (Exception e) {
+			log.debug(e.getLocalizedMessage());
+			return new RestResponse<>(new ErrorDto(e.getLocalizedMessage()));
+		}
+	}
+
 	@RequestMapping(value = "/login", method = RequestMethod.POST)
 	public RestResponse<VerifyDto> handleLogin(@RequestBody UserDto userDto) {
 		try {
