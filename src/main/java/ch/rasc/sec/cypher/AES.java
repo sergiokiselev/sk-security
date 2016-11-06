@@ -32,19 +32,15 @@ public class AES {
         return keyGen.generateKey();
     }
 
-    public static byte[] encrypt(byte[] data, SecretKey aesKey){
-        Cipher encryptCipher = null;
-        try {
-            encryptCipher = Cipher.getInstance("AES/OFB/PKCS5Padding");
-            encryptCipher.init(Cipher.ENCRYPT_MODE, aesKey);
-            currentIV = encryptCipher.getIV();
-        } catch (InvalidKeyException e1) {
-            e1.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        }
+    public static byte[] generateIV(SecretKey secretKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+        Cipher encryptCipher = Cipher.getInstance("AES/OFB/PKCS5Padding");
+        encryptCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        return encryptCipher.getIV();
+    }
+
+    public static byte[] encrypt(byte[] data, SecretKey aesKey, IvParameterSpec ivParameterSpec) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+        Cipher encryptCipher = Cipher.getInstance("AES/OFB/PKCS5Padding");
+        encryptCipher.init(Cipher.ENCRYPT_MODE, aesKey, ivParameterSpec);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         CipherOutputStream cipherOutputStream = new CipherOutputStream(outputStream, encryptCipher);
         try {
