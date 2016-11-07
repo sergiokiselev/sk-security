@@ -4,6 +4,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 @Configuration
-@Import({MethodSecurityConfig.class, WebSecurityConfig.class})
+@Import({WebSecurityConfig.class})
 public class SecurityConfig {
 }

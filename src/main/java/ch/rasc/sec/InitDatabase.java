@@ -29,10 +29,15 @@ public class InitDatabase implements ApplicationListener<ContextRefreshedEvent> 
 			User adminUser = new User();
 			adminUser.setEmail("superadmin@gmail.com");
 			adminUser.setSecret("IB6EFEQKE7U2TQIB");
+			adminUser.setTries(0);
 			adminUser.setPassword(passwordEncoder.encode("password"));
 			userRepository.save(adminUser);
-			User seorgy = new User("sergio.kiselev509@gmail.com", passwordEncoder.encode("password"), null);
+			User seorgy = new User("sergio.kiselev509@gmail.com", passwordEncoder.encode("password"), null, 0);
 			userRepository.save(seorgy);
+			User denis = new User("m-den-i@yandex.by", passwordEncoder.encode("password"), null, 0);
+			userRepository.save(denis);
+			User evgen = new User("eugeneshapovalov94@gmail.com", passwordEncoder.encode("password"), null, 0);
+			userRepository.save(evgen);
 		}
 
 	}

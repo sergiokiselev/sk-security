@@ -6,8 +6,10 @@ import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
- * User: NotePad.by
- * Date: 2/21/2016.
+ * This dto is used to transfer aes encrypted
+ * user login and password to server fo login process.
+ *
+ * @author Sergey Kiselev
  */
 @Data
 public class UserDto implements Serializable {
@@ -17,5 +19,8 @@ public class UserDto implements Serializable {
 
     @NotNull
     private String password;
+
+    @NotNull
+    private String sessionId;
 
 }

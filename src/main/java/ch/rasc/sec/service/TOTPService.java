@@ -8,6 +8,8 @@ import java.security.NoSuchAlgorithmException;
  * Date: 2/25/2016.
  */
 public interface TOTPService {
+    byte[] generateSecret();
+
     boolean verifyCode(String secret, long code, int variance)
             throws InvalidKeyException, NoSuchAlgorithmException;
 
