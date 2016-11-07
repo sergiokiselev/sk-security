@@ -52,11 +52,11 @@ public class TestGoogleAuthApplication {
         UserDto userDto = new UserDto();
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
         System.out.println("Enter login:");
-        //
-        String login = "sergio.kiselev509@gmail.com";//scanner.nextLine();
+        Scanner scanner = new Scanner(System.in);
+        String login = scanner.nextLine();
         System.out.println("Enter password:");
         //password
-        String password = "password"; //scanner.nextLine();
+        String password = scanner.nextLine();
         userDto.setLogin(encoder.encode(login.getBytes()));
         userDto.setPassword(encoder.encode(password.getBytes()));
 
