@@ -86,11 +86,15 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         if (user == null) {
             throw new UsernameNotFoundException("User with login " + login + " was not found");
         }
+        if (!user.isAccountNonLocked())
+            throw new AuthenticationException("Account is locked, you should contact administrator.");
         VerifyDto verifyDto = new VerifyDto();
         if (!passwordEncoder.matches(password, user.getPassword())) {
+            user.setTries(user.getTries() + 1);
             throw new AuthenticationException("Invalid password");
         }
         sessionAttributes.setCorrectPassword(true);
+        user.setTries(0);
         System.out.println("Is post code: " + sessionAttributes.isPostCode());
         if (sessionAttributes.isPostCode()) {
             generateAndSendCode(user, sessionAttributes);
