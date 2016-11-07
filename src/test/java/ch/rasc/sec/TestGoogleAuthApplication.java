@@ -2,12 +2,8 @@ package ch.rasc.sec;
 
 import ch.rasc.sec.cypher.AES;
 import ch.rasc.sec.cypher.RSA;
-import ch.rasc.sec.dto.AesKeyDto;
+import ch.rasc.sec.dto.*;
 import ch.rasc.sec.dto.restresponse.RestResponse;
-import ch.rasc.sec.dto.TokenDto;
-import ch.rasc.sec.dto.TotpSecretDto;
-import ch.rasc.sec.dto.UserDto;
-import ch.rasc.sec.dto.VerifyDto;
 import ch.rasc.sec.service.TOTPService;
 import ch.rasc.sec.service.impl.TOTPServiceImpl;
 import org.springframework.core.ParameterizedTypeReference;
@@ -37,12 +33,56 @@ public class TestGoogleAuthApplication {
 
     public static void main(String[] args)
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
+        //testFullCryptography();
+        //testWithoutPostCode();
+        testWithoutAll();
+    }
+
+    private static void testWithoutAll() throws IOException, InterruptedException, NoSuchAlgorithmException, InvalidKeyException {
+        RsaKeyDto rsaKeyDto = new RsaKeyDto();
+        rsaKeyDto.setEncryption(false);
+        rsaKeyDto.setPostCode(false);
+        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
+        ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
+                .exchange("http://127.0.0.1:8080/rsakey",
+                        HttpMethod.POST,
+                        encodedEntity,
+                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
+
+        UserDto userDto = new UserDto();
+        userDto.setSessionId(keyDto.getBody().getData().getSessionId());
+        System.out.println("Enter login:");
+        //
+        String login = "sergio.kiselev509@gmail.com";//scanner.nextLine();
+        System.out.println("Enter password:");
+        //password
+        String password = "password"; //scanner.nextLine();
+        userDto.setLogin(encoder.encode(login.getBytes()));
+        userDto.setPassword(encoder.encode(password.getBytes()));
+
+        HttpEntity<UserDto> userDtoHttpEntity = new HttpEntity<>(userDto);
+        ResponseEntity<RestResponse<VerifyDto>> verifyDto = restTemplate
+                .exchange("http://127.0.0.1:8080/login",
+                        HttpMethod.POST,
+                        userDtoHttpEntity,
+                        new ParameterizedTypeReference<RestResponse<VerifyDto>>() {});
+
+        System.out.println(verifyDto.getBody().getData());
+        byte[] secretBytes = decoder.decodeBuffer(verifyDto.getBody().getData().getSecret());
+        verifyToken(verifyDto.getBody().getData().getSessionId(), secretBytes);
+    }
+
+    private static void testWithoutPostCode() throws IOException, InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
         KeyPair keyPair = RSA.generateKeyPair();
+        RsaKeyDto rsaKeyDto = new RsaKeyDto();
         String encoded = encoder.encode(keyPair.getPublic().getEncoded());
 
-        HttpEntity<String> encodedEntity = new HttpEntity<>(encoded);
+        rsaKeyDto.setRsaKey(encoded);
+        rsaKeyDto.setEncryption(true);
+        rsaKeyDto.setPostCode(false);
+        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
         ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
-                .exchange("http://127.0.0.1:8084/google/rsakey",
+                .exchange("http://127.0.0.1:8080/rsakey",
                         HttpMethod.POST,
                         encodedEntity,
                         new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
@@ -54,9 +94,38 @@ public class TestGoogleAuthApplication {
         SecretKey secretKey = new SecretKeySpec(secretKeyBytes, "AES");
         Scanner scanner = new Scanner(System.in);
         ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
+        System.out.println(verifyDto.getBody().getData());
+        byte[] secretBytes = AES.decrypt(decoder.decodeBuffer(verifyDto.getBody().getData().getSecret()), secretKey, new IvParameterSpec(ivector));
+        verifyToken(verifyDto.getBody().getData().getSessionId(), secretBytes);
+    }
+
+    private static void testFullCryptography() throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
+        KeyPair keyPair = RSA.generateKeyPair();
+        RsaKeyDto rsaKeyDto = new RsaKeyDto();
+        String encoded = encoder.encode(keyPair.getPublic().getEncoded());
+
+        rsaKeyDto.setRsaKey(encoded);
+        rsaKeyDto.setEncryption(true);
+        rsaKeyDto.setPostCode(true);
+        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
+        ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
+                .exchange("http://127.0.0.1:8080/rsakey",
+                        HttpMethod.POST,
+                        encodedEntity,
+                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
+
+        byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
+        byte[] encryptedIvector = decoder.decodeBuffer(keyDto.getBody().getData().getIvector());
+        byte[] secretKeyBytes = RSA.decrypt(rsaEncryptedSecretKey, keyPair.getPrivate());
+        byte[] ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
+        SecretKey secretKey = new SecretKeySpec(secretKeyBytes, "AES");
+        Scanner scanner = new Scanner(System.in);
+        ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
+        System.out.println(verifyDto.getBody().getData());
         ResponseEntity<RestResponse<TotpSecretDto>> totpSecretDto = verifyCode(ivector, secretKey, scanner, verifyDto);
         byte[] secretBytes = AES.decrypt(decoder.decodeBuffer(totpSecretDto.getBody().getData().getSecret()), secretKey, new IvParameterSpec(ivector));
-        verifyToken(totpSecretDto, secretBytes);
+        System.out.println(secretBytes);
+        verifyToken(totpSecretDto.getBody().getData().getSessionId(), secretBytes);
     }
 
     private static ResponseEntity<RestResponse<TotpSecretDto>> verifyCode(byte[] ivector, SecretKey secretKey, Scanner scanner, ResponseEntity<RestResponse<VerifyDto>> verifyDto)
@@ -69,7 +138,7 @@ public class TestGoogleAuthApplication {
 
         HttpEntity<VerifyDto> verifyDtoHttpEntity = new HttpEntity<>(verifyDto1);
         ResponseEntity<RestResponse<TotpSecretDto>> totpSecretDto = restTemplate
-                .exchange("http://127.0.0.1:8084/google/verify",
+                .exchange("http://127.0.0.1:8080/verify",
                         HttpMethod.POST,
                         verifyDtoHttpEntity,
                         new ParameterizedTypeReference<RestResponse<TotpSecretDto>>() {});
@@ -82,33 +151,34 @@ public class TestGoogleAuthApplication {
         UserDto userDto = new UserDto();
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
         System.out.println("Enter login:");
-        //sergio.kiselev509@gmail.com
-        String login = scanner.nextLine();
+        //
+        String login = "sergio.kiselev509@gmail.com";//scanner.nextLine();
         System.out.println("Enter password:");
         //password
-        String password = scanner.nextLine();
+        String password = "password"; //scanner.nextLine();
         userDto.setLogin(encoder.encode(AES.encrypt(login.getBytes(), secretKey, new IvParameterSpec(ivector))));
         userDto.setPassword(encoder.encode(AES.encrypt(password.getBytes(), secretKey, new IvParameterSpec(ivector))));
 
         HttpEntity<UserDto> userDtoHttpEntity = new HttpEntity<>(userDto);
         return restTemplate
-                .exchange("http://127.0.0.1:8084/google/login",
+                .exchange("http://127.0.0.1:8080/login",
                         HttpMethod.POST,
                         userDtoHttpEntity,
                         new ParameterizedTypeReference<RestResponse<VerifyDto>>() {});
     }
 
-    private static void verifyToken(ResponseEntity<RestResponse<TotpSecretDto>> totpSecretDto, byte[] secretBytes)
+    private static void verifyToken(String sessionId, byte[] secretBytes)
             throws InvalidKeyException, NoSuchAlgorithmException, InterruptedException {
         for (int i = 0; i < 10; i++) {
             long totpCode = getCurrentCode(secretBytes);
+            System.out.println("CUrrent CODE: " + totpCode);
             TokenDto tokenDto = new TokenDto();
-            tokenDto.setSessionId(totpSecretDto.getBody().getData().getSessionId());
+            tokenDto.setSessionId(sessionId);
             tokenDto.setToken(totpCode);
 
             HttpEntity<TokenDto> tokenDtoHttpEntity = new HttpEntity<>(tokenDto);
             ResponseEntity<RestResponse<String>> responseEntity = restTemplate
-                    .exchange("http://127.0.0.1:8084/google/token",
+                    .exchange("http://127.0.0.1:8080/token",
                             HttpMethod.POST,
                             tokenDtoHttpEntity,
                             new ParameterizedTypeReference<RestResponse<String>>() {});

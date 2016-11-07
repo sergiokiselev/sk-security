@@ -18,7 +18,5 @@ public class TotpSecretDto implements Serializable {
 
     private String secret;
 
-    private String error;
-
     private String sessionId;
 }

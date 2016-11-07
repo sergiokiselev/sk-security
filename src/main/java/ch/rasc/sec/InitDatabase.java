@@ -33,6 +33,10 @@ public class InitDatabase implements ApplicationListener<ContextRefreshedEvent> 
 			userRepository.save(adminUser);
 			User seorgy = new User("sergio.kiselev509@gmail.com", passwordEncoder.encode("password"), null);
 			userRepository.save(seorgy);
+			User denis = new User("m-den-i@yandex.by", passwordEncoder.encode("password"), null);
+			userRepository.save(denis);
+			User evgen = new User("eugeneshapovalov94@gmail.com", passwordEncoder.encode("password"), null);
+			userRepository.save(evgen);
 		}
 
 	}

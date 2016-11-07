@@ -13,14 +13,13 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class VerifyDto implements Serializable {
 
-    public VerifyDto(String exception) {
-        this.exception = exception;
-    }
-
     private String sessionId;
 
     private String code;
 
-    private String exception;
+    private String secret;
 
+    public String toString() {
+        return sessionId + " " + code + " " + secret;
+    }
 }
