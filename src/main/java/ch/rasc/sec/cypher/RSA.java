@@ -1,18 +1,14 @@
 package ch.rasc.sec.cypher;
 
-import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.SignatureException;
+import java.security.*;
+import java.security.spec.MGF1ParameterSpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 
 public class RSA {
 
@@ -30,7 +26,7 @@ public class RSA {
     public static byte[] encrypt(byte[] data, PublicKey publicKey) {
         Cipher cipher = null;
         try {
-            cipher = Cipher.getInstance("RSA");
+            cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
@@ -53,7 +49,7 @@ public class RSA {
     public static byte[] decrypt(byte[] data, PrivateKey privateKey) {
         Cipher cipher = null;
         try {
-            cipher = Cipher.getInstance("RSA");
+            cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
