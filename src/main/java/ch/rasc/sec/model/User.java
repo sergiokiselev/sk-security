@@ -72,7 +72,7 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 
 	@Override
 	public boolean isAccountNonLocked() {
-		return (tries != MAX_TRIES);
+		return (tries < MAX_TRIES);
 	}
 
 	@Override
