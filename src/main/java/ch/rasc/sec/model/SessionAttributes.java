@@ -2,6 +2,7 @@ package ch.rasc.sec.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.crypto.SecretKey;
 import javax.validation.constraints.NotNull;
@@ -12,12 +13,11 @@ import java.io.Serializable;
  * Date: 10/25/2016.
  */
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
 public class SessionAttributes implements Serializable {
 
-    public SessionAttributes(SecretKey aesKey, byte[] ivector) {
-        this.aesKey = aesKey;
-        this.ivector = ivector;
+    public SessionAttributes(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     @NotNull
@@ -31,4 +31,10 @@ public class SessionAttributes implements Serializable {
     private String code;
 
     private byte[] totpSecret;
+
+    private boolean encryption;
+
+    private boolean postCode;
+
+    private String sessionId;
 }
