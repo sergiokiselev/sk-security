@@ -3,6 +3,8 @@ package ch.rasc.sec.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.jpa.criteria.ValueHandlerFactory;
+import org.hibernate.jpa.criteria.predicate.BooleanAssertionPredicate;
 import org.hibernate.validator.constraints.NotBlank;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,6 +25,7 @@ import java.util.Set;
 public class User extends AbstractPersistable<Long> implements UserDetails {
 
 	private static final long serialVersionUID = 1L;
+	private static final int MAX_TRIES = 3;
 
 	@Column(nullable = false, unique = true)
 	@NotBlank
@@ -34,12 +37,16 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 	@Column
 	private String secret;
 
+	@Column
+	private Integer tries;
+
 	@Column(unique = true)
 	private String authSessionId;
 
-	public User(String login, String password, Set<GrantedAuthority> authorities) {
+	public User(String login, String password, Set<GrantedAuthority> authorities, Integer tries) {
 		this.email = login;
 		this.password = password;
+		this.tries = tries;
 		//this.authorities = authorities;
 	}
 
@@ -65,7 +72,7 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 
 	@Override
 	public boolean isAccountNonLocked() {
-		return true;
+		return (tries != MAX_TRIES);
 	}
 
 	@Override
