@@ -36,6 +36,17 @@ public class TestGoogleAuthApplication {
         //testFullCryptography();
         //testWithoutPostCode();
         testWithoutAll();
+//        totpTest();
+    }
+
+    private static void totpTest() throws IOException, InvalidKeyException, NoSuchAlgorithmException{
+        String secret;
+        while (true){
+            Scanner sc = new Scanner(System.in);
+            secret = sc.nextLine();
+            byte [] bytes = new BASE64Decoder().decodeBuffer(secret);
+            System.out.println(getCurrentCode(bytes));
+        }
     }
 
     private static void testWithoutAll() throws IOException, InterruptedException, NoSuchAlgorithmException, InvalidKeyException {
