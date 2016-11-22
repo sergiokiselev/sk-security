@@ -6,6 +6,12 @@ import ch.rasc.sec.dto.*;
 import ch.rasc.sec.dto.restresponse.RestResponse;
 import ch.rasc.sec.service.TOTPService;
 import ch.rasc.sec.service.impl.TOTPServiceImpl;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -18,11 +24,14 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Scanner;
 
 public class TestGoogleAuthApplication {
@@ -35,8 +44,10 @@ public class TestGoogleAuthApplication {
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
         //testFullCryptography();
         //testWithoutPostCode();
-        testWithoutAll();
+       // testWithoutAll();
 //        totpTest();
+        //testFileUpload();
+        testGetFiles();
     }
 
     private static void totpTest() throws IOException, InvalidKeyException, NoSuchAlgorithmException{
@@ -47,6 +58,39 @@ public class TestGoogleAuthApplication {
             byte [] bytes = new BASE64Decoder().decodeBuffer(secret);
             System.out.println(getCurrentCode(bytes));
         }
+    }
+
+    private static void testGetFiles() throws IOException {
+//        HttpClient httpclient = new DefaultHttpClient();
+//        HttpGet httpGet = new HttpGet("http://127.0.0.1:8080/files");
+//
+//        HttpResponse response = httpclient.execute(httpGet);
+//        org.apache.http.HttpEntity entity = response.getEntity();
+
+        //HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
+        ResponseEntity<RestResponse<List<String>>> keyDto = restTemplate
+                .exchange("http://127.0.0.1:8080/files",
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<RestResponse<List<String>>>() {});
+        System.out.println(keyDto);
+
+    }
+
+    private static void testFileUpload() throws IOException {
+        File file = new File("src\\main\\resources\\download\\gopnik.jpeg");
+        FileInputStream inputStream = new FileInputStream(file);
+        byte[] fileBytes = new byte[(int)file.length()];
+        inputStream.read(fileBytes);
+        HttpClient httpclient = new DefaultHttpClient();
+        HttpPost httpPost = new HttpPost("http://127.0.0.1:8080/files?name=" + file.getName());
+
+        FileBody uploadFilePart = new FileBody(file);
+        MultipartEntity reqEntity = new MultipartEntity();
+        reqEntity.addPart("file", uploadFilePart);
+        httpPost.setEntity(reqEntity);
+
+        HttpResponse response = httpclient.execute(httpPost);
     }
 
     private static void testWithoutAll() throws IOException, InterruptedException, NoSuchAlgorithmException, InvalidKeyException {
@@ -186,7 +230,7 @@ public class TestGoogleAuthApplication {
             TokenDto tokenDto = new TokenDto();
             tokenDto.setSessionId(sessionId);
             tokenDto.setToken(totpCode);
-
+            System.out.println(tokenDto);
             HttpEntity<TokenDto> tokenDtoHttpEntity = new HttpEntity<>(tokenDto);
             ResponseEntity<RestResponse<String>> responseEntity = restTemplate
                     .exchange("http://127.0.0.1:8080/token",
