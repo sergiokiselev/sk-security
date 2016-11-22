@@ -1,6 +1,7 @@
 package ch.rasc.sec.service;
 
 import ch.rasc.sec.dto.*;
+import ch.rasc.sec.model.SessionAttributes;
 import ch.rasc.sec.util.exception.AuthenticationException;
 import org.hibernate.validator.constraints.NotBlank;
 
@@ -23,4 +24,6 @@ public interface UserService {
     AesKeyDto getAesKey(RsaKeyDto rsaKey) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, NoSuchPaddingException;
 
     String verifyToken(TokenDto token) throws NoSuchAlgorithmException, InvalidKeyException, AuthenticationException;
+
+    SessionAttributes getSessionAttributes(String sessionId);
 }

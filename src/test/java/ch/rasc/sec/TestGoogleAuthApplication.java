@@ -44,10 +44,10 @@ public class TestGoogleAuthApplication {
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
         //testFullCryptography();
         //testWithoutPostCode();
-       // testWithoutAll();
+       testWithoutAll();
 //        totpTest();
         //testFileUpload();
-        testGetFiles();
+        //testGetFiles();
     }
 
     private static void totpTest() throws IOException, InvalidKeyException, NoSuchAlgorithmException{
@@ -223,8 +223,8 @@ public class TestGoogleAuthApplication {
     }
 
     private static void verifyToken(String sessionId, byte[] secretBytes)
-            throws InvalidKeyException, NoSuchAlgorithmException, InterruptedException {
-        for (int i = 0; i < 10; i++) {
+            throws InvalidKeyException, NoSuchAlgorithmException, InterruptedException, IOException {
+
             long totpCode = getCurrentCode(secretBytes);
             System.out.println("CUrrent CODE: " + totpCode);
             TokenDto tokenDto = new TokenDto();
@@ -238,8 +238,22 @@ public class TestGoogleAuthApplication {
                             tokenDtoHttpEntity,
                             new ParameterizedTypeReference<RestResponse<String>>() {});
             System.out.println(responseEntity.getBody().getData());
-            Thread.sleep(10000);
-        }
+        //    Thread.sleep(10000);
+
+        File file = new File("src\\main\\resources\\download\\gopnik.jpeg");
+        FileInputStream inputStream = new FileInputStream(file);
+        byte[] fileBytes = new byte[(int)file.length()];
+        inputStream.read(fileBytes);
+        HttpClient httpclient = new DefaultHttpClient();
+        HttpPost httpPost = new HttpPost("http://127.0.0.1:8080/files?name=" + file.getName() +
+                "&sessionId=" + sessionId + "&token=" + totpCode);
+
+        FileBody uploadFilePart = new FileBody(file);
+        MultipartEntity reqEntity = new MultipartEntity();
+        reqEntity.addPart("file", uploadFilePart);
+        httpPost.setEntity(reqEntity);
+
+        HttpResponse response = httpclient.execute(httpPost);
     }
 
     private static long getCurrentCode(byte[] secretBytes) throws InvalidKeyException, NoSuchAlgorithmException {

@@ -24,6 +24,9 @@ public class FileDescriptor extends AbstractPersistable<Long> {
     @Column
     private String link;
 
+    @Column(nullable = false, unique = true)
+    private String googleId;
+
     @Column
     private Integer size;
 
@@ -32,6 +35,10 @@ public class FileDescriptor extends AbstractPersistable<Long> {
 
     @Column
     private Date lastModified;
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private User ownerId;
 
     @OneToMany(cascade=CascadeType.ALL, mappedBy = "fileDescriptor")
     private Set<Grants> grants;
