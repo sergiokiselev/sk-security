@@ -1,4 +1,4 @@
-package ch.rasc.sec.secureserver.model;
+package ch.rasc.sec.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,11 +10,11 @@ import java.util.Date;
 import java.util.Set;
 
 @Entity
-@Table(name = "docs")
+@Table(name = "file_descriptors")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Document extends AbstractPersistable<Long> {
+public class FileDescriptor extends AbstractPersistable<Long> {
 
     private static final long serialVersionUID = 1L;
 
@@ -24,11 +24,14 @@ public class Document extends AbstractPersistable<Long> {
     @Column
     private String link;
 
+    @Column(nullable = false, unique = true)
+    private String googleId;
+
     @Column
     private Integer size;
 
     @Column
-    private  Date created;
+    private Date created;
 
     @Column
     private Date lastModified;
@@ -37,10 +40,10 @@ public class Document extends AbstractPersistable<Long> {
     @JoinColumn(name = "owner_id")
     private User ownerId;
 
-    @OneToMany(mappedBy = "doc")
-    private Set<DocGroup> docGroups;
+    @OneToMany(cascade=CascadeType.ALL, mappedBy = "fileDescriptor")
+    private Set<Grants> grants;
 
-    public Document(String name, String link) {
+    public FileDescriptor(String name, String link) {
         this.name = name;
         this.link = link;
     }

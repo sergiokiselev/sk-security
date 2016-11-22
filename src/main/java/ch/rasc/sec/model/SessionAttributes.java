@@ -37,4 +37,6 @@ public class SessionAttributes implements Serializable {
     private boolean postCode;
 
     private String sessionId;
+
+    private long userId;
 }

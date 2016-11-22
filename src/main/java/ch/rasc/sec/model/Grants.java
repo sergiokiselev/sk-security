@@ -1,4 +1,4 @@
-package ch.rasc.sec.secureserver.model;
+package ch.rasc.sec.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,23 +9,23 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "docGroup")
+@Table(name = "grants")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocGroup extends AbstractPersistable<Long> {
+public class Grants extends AbstractPersistable<Long> {
 
-    public enum AccessLevel {READWRITE,READONLY}
+    public enum AccessLevel {READWRITE, READONLY}
 
     @Column(nullable = false)
     private AccessLevel accessLevel;
 
     @ManyToOne
-    @JoinColumn(name = "group_id")
-    private Group group;
+    @JoinColumn(name = "user_group_id")
+    private UserGroup userGroup;
 
     @ManyToOne
-    @JoinColumn(name = "doc_id")
-    private Document doc;
+    @JoinColumn(name = "file_descriptor_id")
+    private FileDescriptor fileDescriptor;
 }

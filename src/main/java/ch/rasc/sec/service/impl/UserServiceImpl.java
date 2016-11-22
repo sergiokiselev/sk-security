@@ -94,6 +94,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             throw new AuthenticationException("Invalid password");
         }
         sessionAttributes.setCorrectPassword(true);
+        sessionAttributes.setUserId(user.getId());
         user.setTries(0);
         System.out.println("Is post code: " + sessionAttributes.isPostCode());
         if (sessionAttributes.isPostCode()) {
@@ -197,5 +198,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             throw new AuthenticationException("Invalid token");
         }
         return "Yeah!!! You did it!!!";
+    }
+
+    @Override
+    public SessionAttributes getSessionAttributes(String sessionId) {
+        return sessionAttributes.get(sessionId);
     }
 }

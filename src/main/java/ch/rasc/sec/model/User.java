@@ -10,9 +10,7 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -43,13 +41,17 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 	@Column(unique = true)
 	private String authSessionId;
 
+	@ManyToMany(cascade = CascadeType.ALL)
+	@JoinTable(name = "user_group", joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "user_group_id", referencedColumnName = "id"))
+	private Set<UserGroup> userGroups;
+
 	public User(String login, String password, Set<GrantedAuthority> authorities, Integer tries) {
 		this.email = login;
 		this.password = password;
 		this.tries = tries;
 		//this.authorities = authorities;
 	}
-
+	
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		return new HashSet<>();
