@@ -27,7 +27,6 @@ public class FileController {
                                          @RequestParam String sessionId, @RequestParam long token) {
         try {
             java.io.File file1 = new java.io.File(name);
-            file1.createNewFile();
             file.transferTo(file1);
             return new RestResponse<>(googleApiService.uploadFile(file1, sessionId, token, name));
         } catch (Exception e) {
