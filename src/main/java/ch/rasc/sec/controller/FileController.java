@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.util.List;
 
 /**
@@ -26,7 +27,12 @@ public class FileController {
     public RestResponse<FileDescriptor> uploadFile(@RequestBody MultipartFile file, @RequestParam String name,
                                          @RequestParam String sessionId, @RequestParam long token) {
         try {
-            java.io.File file1 = new java.io.File(name);
+            java.io.File tempDir = new File("/tmp");
+            if (!tempDir.exists()) {
+                tempDir.mkdir();
+            }
+            java.io.File file1 = new java.io.File(tempDir + "/" + name);
+            file1.createNewFile();
             file.transferTo(file1);
             return new RestResponse<>(googleApiService.uploadFile(file1, sessionId, token, name));
         } catch (Exception e) {
