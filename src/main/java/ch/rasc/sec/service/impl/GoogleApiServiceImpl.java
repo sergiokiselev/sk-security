@@ -2,10 +2,9 @@ package ch.rasc.sec.service.impl;
 
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
-import ch.rasc.sec.model.FileDescriptor;
-import ch.rasc.sec.model.SessionAttributes;
-import ch.rasc.sec.model.User;
+import ch.rasc.sec.model.*;
 import ch.rasc.sec.repository.FileDescriptorRepository;
+import ch.rasc.sec.repository.GrantsRepository;
 import ch.rasc.sec.repository.UserRepository;
 import ch.rasc.sec.service.DriveService;
 import ch.rasc.sec.service.GoogleApiService;
@@ -26,9 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * User: NotePad.by
@@ -49,6 +46,9 @@ public class GoogleApiServiceImpl implements GoogleApiService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private GrantsRepository grantsRepository;
 
     @Value("${localMachine}")
     private boolean isLocalMachine;
@@ -75,16 +75,32 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         fileDescriptor.setCreated(new Date(insertedFile.getCreatedDate().getValue()));
         fileDescriptor.setLink(insertedFile.getDownloadUrl());
         fileDescriptor.setSize(insertedFile.size());
+        createGrants(user,fileDescriptor);
         return fileDescriptorRepository.save(fileDescriptor);
     }
+
+    private void createGrants(User user, FileDescriptor fileDescriptor){
+        for(UserGroup userGroup : user.getUserGroups()){
+            grantsRepository.save(new Grants(Grants.AccessLevel.READWRITE,userGroup,fileDescriptor));
+        }
+    }
+
 
     @Override
     public List<FileDescriptorDto> getFilesList(TokenDto tokenDto) throws Exception {
         userService.verifyToken(tokenDto);
         SessionAttributes sessionAttributes = userService.getSessionAttributes(tokenDto.getSessionId());
         User user = userRepository.getOne(sessionAttributes.getUserId());
-        List<FileDescriptor> descriptors = fileDescriptorRepository.getByOwnerId(user);
-        return mapToDto(descriptors);
+        //List<FileDescriptor> descriptors = fileDescriptorRepository.getByOwnerId(user);
+        Set<FileDescriptor> descriptors = new HashSet<>();
+        Set<UserGroup> userGroups = user.getUserGroups();
+        for(UserGroup ug : userGroups){
+            for(Grants grant : ug.getGrants()){
+                descriptors.add(grant.getFileDescriptor());
+            }
+        }
+
+        return mapToDto(new ArrayList<FileDescriptor>(descriptors));
     }
 
     @Override
