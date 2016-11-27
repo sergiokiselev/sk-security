@@ -1,5 +1,6 @@
 package ch.rasc.sec;
 
+import ch.rasc.sec.cypher.AES;
 import ch.rasc.sec.model.User;
 import ch.rasc.sec.model.UserGroup;
 import ch.rasc.sec.repository.GrantsRepository;
@@ -12,6 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,9 +41,25 @@ public class InitDatabase implements ApplicationListener<ContextRefreshedEvent> 
 		this.passwordEncoder = passwordEncoder;
 	}
 
+
+
 	@Override
 	@Transactional
 	public void onApplicationEvent(ContextRefreshedEvent event) {
+
+		//InputStream stream = GoogleApiServiceImpl.class.getResourceAsStream(GoogleAuth.KEY_FILENAME);
+
+		try {
+			GoogleAuth.serverGoogleKey = AES.generateKey();
+			GoogleAuth.ivectorGoogle = new IvParameterSpec(AES.generateIV(GoogleAuth.serverGoogleKey));
+		} catch (NoSuchPaddingException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		}
+
 		if (this.userRepository.count() == 0) {
 			User adminUser = new User();
 			adminUser.setEmail("superadmin@gmail.com");

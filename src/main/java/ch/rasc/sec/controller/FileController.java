@@ -1,5 +1,6 @@
 package ch.rasc.sec.controller;
 
+import ch.rasc.sec.dto.FileContentDto;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
 import ch.rasc.sec.dto.restresponse.ErrorDto;
@@ -31,16 +32,8 @@ public class FileController {
     public RestResponse<FileDescriptorDto> uploadFile(@RequestBody MultipartFile file, @RequestParam String name,
                                                       @RequestParam String sessionId, @RequestParam long token) {
         try {
-            String fileLocation = name;
-            if (!isLocalMachine) {
-                fileLocation = "/tmp/" + name;
-            }
-            java.io.File file1 = new java.io.File(fileLocation);
-            file1.createNewFile();
-            FileOutputStream fileOutputStream = new FileOutputStream(file1);
-            fileOutputStream.write(file.getBytes());
-            fileOutputStream.close();
-            return new RestResponse<>(googleApiService.uploadFile(file1, sessionId, token, name));
+
+            return new RestResponse<>(googleApiService.uploadFile(file.getBytes(), sessionId, token, name));
         } catch (Exception e) {
             e.printStackTrace();
             return new RestResponse<>(new ErrorDto(e.getMessage()));
@@ -67,12 +60,13 @@ public class FileController {
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/files/{fileId}")
-    public void downloadFile(@PathVariable String fileId, @RequestParam String sessionId,
-                             @RequestParam long token, HttpServletResponse httpServletResponse) {
+    public RestResponse<FileContentDto> downloadFile(@PathVariable String fileId, @RequestParam String sessionId,
+                                                         @RequestParam long token, HttpServletResponse httpServletResponse) {
         try {
-            googleApiService.downloadFile(fileId, httpServletResponse, sessionId, token);
+            return new RestResponse<>(googleApiService.downloadFile(fileId, httpServletResponse, sessionId, token));
         } catch (Exception e) {
             e.printStackTrace();
+            return new RestResponse<>(new ErrorDto(e.getMessage()));
         }
     }
 
