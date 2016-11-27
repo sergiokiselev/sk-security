@@ -47,7 +47,7 @@ public class TestGoogleAuthApplication {
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
         //testFullCryptography();
         testWithoutPostCode();
-        //testWithoutAll();
+      //  testWithoutAll();
 //        totpTest();
         //testFileUpload();
         //testGetFiles();
@@ -229,8 +229,8 @@ public class TestGoogleAuthApplication {
         MultipartEntity reqEntity = new MultipartEntity();
         reqEntity.addPart("file", uploadFilePart);
         httpPost.setEntity(reqEntity);
-
         HttpResponse response = httpclient.execute(httpPost);
+
         ResponseEntity<RestResponse<List<FileDescriptorDto>>> keyDto = restTemplate
                 .exchange(TestUtils.getUrl("files?sessionId=" + sessionId + "&token=" + totpCode),
                         HttpMethod.GET,
@@ -240,7 +240,8 @@ public class TestGoogleAuthApplication {
         System.out.println(keyDto.getBody().getData().size());
         System.out.println(keyDto);
         FileDescriptorDto descriptorDto = keyDto.getBody().getData().get(0);
-        HttpClient client = new DefaultHttpClient();
+
+        /*HttpClient client = new DefaultHttpClient();
         HttpGet get = new HttpGet(TestUtils.getUrl("files/" + descriptorDto.getGoogleId() +
                 "?sessionId=" + sessionId + "&token=" + totpCode));
         HttpResponse response1 = client.execute(get);
@@ -249,9 +250,21 @@ public class TestGoogleAuthApplication {
         stream.read(aaaa);
         FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
         stream1.write(aaaa);
-        System.out.println(aaaa.length);
-        restTemplate.delete(TestUtils.getUrl("files/" + descriptorDto.getGoogleId() +
-                "?sessionId=" + sessionId + "&token=" + totpCode));
+        System.out.println(aaaa.length);*/
+
+        ResponseEntity<RestResponse<FileContentDto>> fileContent = restTemplate
+                .exchange(TestUtils.getUrl("files/"+descriptorDto.getGoogleId()+/*encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector)))*/
+                                "?sessionId=" + sessionId + "&token=" + totpCode),
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<RestResponse<FileContentDto>>() {
+                        });
+        byte[] aaaa =decoder.decodeBuffer(fileContent.getBody().getData().getContent());
+        FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
+        stream1.write(aaaa);
+
+        /*restTemplate.delete(TestUtils.getUrl("files/" + descriptorDto.getGoogleId() +
+                "?sessionId=" + sessionId + "&token=" + totpCode));*/
     }
 
     private static long getCurrentCode(byte[] secretBytes) throws InvalidKeyException, NoSuchAlgorithmException {
@@ -296,8 +309,8 @@ public class TestGoogleAuthApplication {
         MultipartEntity reqEntity = new MultipartEntity();
         reqEntity.addPart("file", uploadFilePart);
         httpPost.setEntity(reqEntity);
-
         HttpResponse response = httpclient.execute(httpPost);
+
         ResponseEntity<RestResponse<List<FileDescriptorDto>>> keyDto = restTemplate
                 .exchange(TestUtils.getUrl("files?sessionId=" + sessionId + "&token=" + totpCode),
                         HttpMethod.GET,
@@ -308,18 +321,32 @@ public class TestGoogleAuthApplication {
         System.out.println(keyDto);
         FileDescriptorDto descriptorDto = decryptFileDescriptorDto(keyDto.getBody().getData().get(0));
         System.out.println("FDD "+descriptorDto.getGoogleId()+" "+descriptorDto.getName());
-        HttpClient client = new DefaultHttpClient();
+
+        /*HttpClient client = new DefaultHttpClient();
         HttpGet get = new HttpGet(TestUtils.getUrl("files/" + encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector))) +
                 "?sessionId=" + sessionId + "&token=" + totpCode));
         HttpResponse response1 = client.execute(get);
         InputStream stream = response1.getEntity().getContent();
+        System.out.println((int)response1.getEntity().getContentLength());
         byte[] aaaa = new byte[(int) response1.getEntity().getContentLength()];
         stream.read(aaaa);
         FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
         stream1.write(aaaa);
-        //stream1.write(AES.decrypt(aaaa,secretKey,new IvParameterSpec(ivector)));
-        System.out.println(aaaa.length);
-        restTemplate.delete(TestUtils.getUrl("files/" + encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector))) +
+        stream1.write(AES.decrypt(aaaa,secretKey,new IvParameterSpec(ivector)));
+        System.out.println(aaaa.length);*/
+
+        ResponseEntity<RestResponse<FileContentDto>> fileContent = restTemplate
+                .exchange(TestUtils.getUrl("files/"+descriptorDto.getGoogleId()+//encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector)))
+                        "?sessionId=" + sessionId + "&token=" + totpCode),
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<RestResponse<FileContentDto>>() {
+                        });
+        byte[] aaaa =decoder.decodeBuffer(fileContent.getBody().getData().getContent());
+        FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
+        stream1.write(AES.decrypt(aaaa,secretKey,new IvParameterSpec(ivector)));
+
+        restTemplate.delete(TestUtils.getUrl("files/" +descriptorDto.getGoogleId()+//encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector))) +
               "?sessionId=" + sessionId + "&token=" + totpCode));
     }
 

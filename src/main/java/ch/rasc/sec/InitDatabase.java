@@ -47,6 +47,8 @@ public class InitDatabase implements ApplicationListener<ContextRefreshedEvent> 
 	@Transactional
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 
+		//InputStream stream = GoogleApiServiceImpl.class.getResourceAsStream(GoogleAuth.KEY_FILENAME);
+
 		try {
 			GoogleAuth.serverGoogleKey = AES.generateKey();
 			GoogleAuth.ivectorGoogle = new IvParameterSpec(AES.generateIV(GoogleAuth.serverGoogleKey));

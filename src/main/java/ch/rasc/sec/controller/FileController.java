@@ -1,5 +1,6 @@
 package ch.rasc.sec.controller;
 
+import ch.rasc.sec.dto.FileContentDto;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
 import ch.rasc.sec.dto.restresponse.ErrorDto;
@@ -59,12 +60,13 @@ public class FileController {
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/files/{fileId}")
-    public void downloadFile(@PathVariable String fileId, @RequestParam String sessionId,
-                             @RequestParam long token, HttpServletResponse httpServletResponse) {
+    public RestResponse<FileContentDto> downloadFile(@PathVariable String fileId, @RequestParam String sessionId,
+                                                         @RequestParam long token, HttpServletResponse httpServletResponse) {
         try {
-            googleApiService.downloadFile(fileId, httpServletResponse, sessionId, token);
+            return new RestResponse<>(googleApiService.downloadFile(fileId, httpServletResponse, sessionId, token));
         } catch (Exception e) {
             e.printStackTrace();
+            return new RestResponse<>(new ErrorDto(e.getMessage()));
         }
     }
 

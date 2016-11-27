@@ -21,6 +21,8 @@ import javax.crypto.spec.IvParameterSpec;
 public class GoogleAuth extends SpringBootServletInitializer {
 	public static SecretKey serverGoogleKey;
 	public static IvParameterSpec ivectorGoogle;
+	public static final String KEY_FILENAME = "aes_key";
+	public static final String IV_FILENAME = "aes_iv";
 
 	public static void main(String[] args) throws Exception {
 		SpringApplication.run(GoogleAuth.class, args);

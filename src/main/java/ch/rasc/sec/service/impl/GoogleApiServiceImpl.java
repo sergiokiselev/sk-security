@@ -2,6 +2,7 @@ package ch.rasc.sec.service.impl;
 
 import ch.rasc.sec.GoogleAuth;
 import ch.rasc.sec.cypher.AES;
+import ch.rasc.sec.dto.FileContentDto;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
 import ch.rasc.sec.model.*;
@@ -82,10 +83,8 @@ public class GoogleApiServiceImpl implements GoogleApiService {
 
         if (sessionAttributes.isEncryption()) {
             bytes = AES.decrypt(bytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
-            bytes = AES.encrypt(bytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
-
-
         }
+        bytes = AES.encrypt(bytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
         fileOutputStream.write(bytes);
         fileOutputStream.close();
 
@@ -156,17 +155,17 @@ public class GoogleApiServiceImpl implements GoogleApiService {
     }
 
     @Override
-    public void downloadFile(String fileId, HttpServletResponse response, String sessionId, long token) throws Exception {
+    public FileContentDto downloadFile(String fileId, HttpServletResponse response, String sessionId, long token) throws Exception {
         userService.verifyToken(new TokenDto(sessionId, token));
         SessionAttributes sessionAttributes = userService.getSessionAttributes(sessionId);
         User user = userRepository.findOne(sessionAttributes.getUserId());
 
-        if (sessionAttributes.isEncryption())
-            fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
+        //if (sessionAttributes.isEncryption())
+          //  fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
 
         FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
         if (!checkAccess(fd.getId(), user))
-            return;
+            return null;
 
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
         Drive drive = driveService.getDrive(transport);
@@ -185,15 +184,20 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         FileInputStream fis = new FileInputStream(downloadPath);
         byte[] filebytes = new byte[fis.available()];
         fis.read(filebytes);
-        OutputStream outputStream = response.getOutputStream();
+        //OutputStream outputStream = response.getOutputStream();
 
+        filebytes = AES.decrypt(filebytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
         if (sessionAttributes.isEncryption()) {
-            filebytes = AES.decrypt(filebytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
-            //filebytes = AES.encrypt(filebytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
+            filebytes = AES.encrypt(filebytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
         }
-        response.setContentLength(filebytes.length);
-        outputStream.write(filebytes);
-        outputStream.close();
+
+        //response.setContentLength(filebytes.length);
+        //outputStream.write(filebytes);
+        //outputStream.close();
+        FileContentDto fcd = new FileContentDto();
+        fcd.setContent(encoder.encode(filebytes));
+        return fcd;
+
     }
 
     @Override
@@ -202,8 +206,8 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         SessionAttributes sessionAttributes = userService.getSessionAttributes(tokenDto.getSessionId());
         User user = userRepository.findOne(sessionAttributes.getUserId());
 
-        if (sessionAttributes.isEncryption())
-            fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
+        //if (sessionAttributes.isEncryption())
+          //  fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
         FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
         if (!checkAccess(fd.getId(), user))
             return;

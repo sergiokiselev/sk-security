@@ -1,5 +1,6 @@
 package ch.rasc.sec.service;
 
+import ch.rasc.sec.dto.FileContentDto;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
 
@@ -16,7 +17,7 @@ public interface GoogleApiService {
 
     List<FileDescriptorDto> getFilesList(TokenDto tokenDto) throws Exception;
 
-    void downloadFile(String fileId, HttpServletResponse response, String sessionId, long token) throws Exception;
+    FileContentDto downloadFile(String fileId, HttpServletResponse response, String sessionId, long token) throws Exception;
 
     void deleteFile(String fileId, TokenDto tokenDto) throws Exception;
 }
