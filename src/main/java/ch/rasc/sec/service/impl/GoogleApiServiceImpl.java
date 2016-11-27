@@ -82,7 +82,7 @@ public class GoogleApiServiceImpl implements GoogleApiService {
 
         if (sessionAttributes.isEncryption()) {
             bytes = AES.decrypt(bytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
-            bytes = AES.encrypt(bytes, GoogleAuth.serverGoogleKey,GoogleAuth.ivectorGoogle);
+            bytes = AES.encrypt(bytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
 
 
         }
@@ -112,7 +112,7 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         return fileDescriptorRepository.save(fileDescriptor);
     }
 
-    private FileDescriptorDto encryptFileDescriptorDto(FileDescriptorDto fdd,SessionAttributes sessionAttributes) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
+    private FileDescriptorDto encryptFileDescriptorDto(FileDescriptorDto fdd, SessionAttributes sessionAttributes) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
         fdd.setGoogleId(encoder.encode(AES.encrypt(fdd.getGoogleId().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
         fdd.setLink(encoder.encode(AES.encrypt(fdd.getLink().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
         fdd.setName(encoder.encode(AES.encrypt(fdd.getName().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
@@ -141,12 +141,12 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         }
 
 
-        return mapToDto(new ArrayList<FileDescriptor>(descriptors),sessionAttributes);
+        return mapToDto(new ArrayList<FileDescriptor>(descriptors), sessionAttributes);
     }
 
-    private boolean checkAccess(Long fileId,User user){
-        for(UserGroup group: user.getUserGroups()){
-            for(Grants grant : group.getGrants()) {
+    private boolean checkAccess(Long fileId, User user) {
+        for (UserGroup group : user.getUserGroups()) {
+            for (Grants grant : group.getGrants()) {
                 if (grant.getFileDescriptor().getId().equals(fileId)) {
                     return true;
                 }
@@ -161,9 +161,11 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         SessionAttributes sessionAttributes = userService.getSessionAttributes(sessionId);
         User user = userRepository.findOne(sessionAttributes.getUserId());
 
-        fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId),sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector())));
+        if (sessionAttributes.isEncryption())
+            fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
+
         FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
-        if(!checkAccess(fd.getId(),user))
+        if (!checkAccess(fd.getId(), user))
             return;
 
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
@@ -185,10 +187,9 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         fis.read(filebytes);
         OutputStream outputStream = response.getOutputStream();
 
-        if(sessionAttributes.isEncryption()){
-
-            filebytes =  AES.decrypt(filebytes, GoogleAuth.serverGoogleKey,GoogleAuth.ivectorGoogle);
-            //filebytes = AES.encrypt(filebytes,sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector()));
+        if (sessionAttributes.isEncryption()) {
+            filebytes = AES.decrypt(filebytes, GoogleAuth.serverGoogleKey, GoogleAuth.ivectorGoogle);
+            //filebytes = AES.encrypt(filebytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
         }
         response.setContentLength(filebytes.length);
         outputStream.write(filebytes);
@@ -201,9 +202,10 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         SessionAttributes sessionAttributes = userService.getSessionAttributes(tokenDto.getSessionId());
         User user = userRepository.findOne(sessionAttributes.getUserId());
 
-        fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId),sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector())));
+        if (sessionAttributes.isEncryption())
+            fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector())));
         FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
-        if(!checkAccess(fd.getId(),user))
+        if (!checkAccess(fd.getId(), user))
             return;
 
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
@@ -232,12 +234,12 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         return fileDescriptorDto;
     }
 
-    private List<FileDescriptorDto> mapToDto(List<FileDescriptor> descriptors,SessionAttributes sessionAttributes) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
+    private List<FileDescriptorDto> mapToDto(List<FileDescriptor> descriptors, SessionAttributes sessionAttributes) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
         List<FileDescriptorDto> fileDescriptorDtos = new ArrayList<>();
         for (FileDescriptor descriptor : descriptors) {
-            if(sessionAttributes.isEncryption()) {
+            if (sessionAttributes.isEncryption()) {
                 fileDescriptorDtos.add(encryptFileDescriptorDto(mapToDto(descriptor), sessionAttributes));
-            }else{
+            } else {
                 fileDescriptorDtos.add(mapToDto(descriptor));
             }
         }
