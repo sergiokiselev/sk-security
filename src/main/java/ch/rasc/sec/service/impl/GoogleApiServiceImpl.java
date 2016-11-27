@@ -1,5 +1,7 @@
 package ch.rasc.sec.service.impl;
 
+import ch.rasc.sec.GoogleAuth;
+import ch.rasc.sec.cypher.AES;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;
 import ch.rasc.sec.model.*;
@@ -20,11 +22,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
 
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
 import javax.servlet.http.HttpServletResponse;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 /**
@@ -50,18 +59,42 @@ public class GoogleApiServiceImpl implements GoogleApiService {
     @Autowired
     private GrantsRepository grantsRepository;
 
+
+    @Autowired
+    private BASE64Encoder encoder;
+
+    @Autowired
+    private BASE64Decoder decoder;
+
     @Value("${localMachine}")
     private boolean isLocalMachine;
 
-    public FileDescriptorDto uploadFile(java.io.File file, String sessionId, long token, String name) throws Exception {
+    public FileDescriptorDto uploadFile(byte[] bytes, String sessionId, long token, String name) throws Exception {
         userService.verifyToken(new TokenDto(sessionId, token));
         SessionAttributes sessionAttributes = userService.getSessionAttributes(sessionId);
+        String fileLocation = name;
+        if (!isLocalMachine) {
+            fileLocation = "/tmp/" + name;
+        }
+        java.io.File file1 = new java.io.File(fileLocation);
+        file1.createNewFile();
+        FileOutputStream fileOutputStream = new FileOutputStream(file1);
+
+        if (sessionAttributes.isEncryption()) {
+            bytes = AES.decrypt(bytes, sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()));
+            bytes = AES.encrypt(bytes, GoogleAuth.serverGoogleKey,GoogleAuth.ivectorGoogle);
+
+
+        }
+        fileOutputStream.write(bytes);
+        fileOutputStream.close();
+
         User user = userRepository.findOne(sessionAttributes.getUserId());
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
         Drive drive = driveService.getDrive(transport);
         File fileMetadata = new File();
-        fileMetadata.setTitle(file.getName());
-        FileContent mediaContent = new FileContent("image/jpeg", file);
+        fileMetadata.setTitle(name);
+        FileContent mediaContent = new FileContent("image/jpeg", file1);
         Drive.Files.Insert insert = drive.files().insert(fileMetadata, mediaContent);
         File insertedFile = insert.execute();
         return mapToDto(createFileDescriptor(name, user, insertedFile));
@@ -75,13 +108,20 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         fileDescriptor.setCreated(new Date(insertedFile.getCreatedDate().getValue()));
         fileDescriptor.setLink(insertedFile.getDownloadUrl());
         fileDescriptor.setSize(insertedFile.size());
-        createGrants(user,fileDescriptor);
+        createGrants(user, fileDescriptor);
         return fileDescriptorRepository.save(fileDescriptor);
     }
 
-    private void createGrants(User user, FileDescriptor fileDescriptor){
-        for(UserGroup userGroup : user.getUserGroups()){
-            grantsRepository.save(new Grants(Grants.AccessLevel.READWRITE,userGroup,fileDescriptor));
+    private FileDescriptorDto encryptFileDescriptorDto(FileDescriptorDto fdd,SessionAttributes sessionAttributes) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
+        fdd.setGoogleId(encoder.encode(AES.encrypt(fdd.getGoogleId().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
+        fdd.setLink(encoder.encode(AES.encrypt(fdd.getLink().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
+        fdd.setName(encoder.encode(AES.encrypt(fdd.getName().getBytes(), sessionAttributes.getAesKey(), new IvParameterSpec(sessionAttributes.getIvector()))));
+        return fdd;
+    }
+
+    private void createGrants(User user, FileDescriptor fileDescriptor) {
+        for (UserGroup userGroup : user.getUserGroups()) {
+            grantsRepository.save(new Grants(Grants.AccessLevel.READWRITE, userGroup, fileDescriptor));
         }
     }
 
@@ -94,18 +134,38 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         //List<FileDescriptor> descriptors = fileDescriptorRepository.getByOwnerId(user);
         Set<FileDescriptor> descriptors = new HashSet<>();
         Set<UserGroup> userGroups = user.getUserGroups();
-        for(UserGroup ug : userGroups){
-            for(Grants grant : ug.getGrants()){
+        for (UserGroup ug : userGroups) {
+            for (Grants grant : ug.getGrants()) {
                 descriptors.add(grant.getFileDescriptor());
             }
         }
 
-        return mapToDto(new ArrayList<FileDescriptor>(descriptors));
+
+        return mapToDto(new ArrayList<FileDescriptor>(descriptors),sessionAttributes);
+    }
+
+    private boolean checkAccess(Long fileId,User user){
+        for(UserGroup group: user.getUserGroups()){
+            for(Grants grant : group.getGrants()) {
+                if (grant.getFileDescriptor().getId().equals(fileId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
     public void downloadFile(String fileId, HttpServletResponse response, String sessionId, long token) throws Exception {
         userService.verifyToken(new TokenDto(sessionId, token));
+        SessionAttributes sessionAttributes = userService.getSessionAttributes(sessionId);
+        User user = userRepository.findOne(sessionAttributes.getUserId());
+
+        fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId),sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector())));
+        FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
+        if(!checkAccess(fd.getId(),user))
+            return;
+
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
         Drive drive = driveService.getDrive(transport);
         Drive.Files.Get get = drive.files().get(fileId);
@@ -124,6 +184,12 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         byte[] filebytes = new byte[fis.available()];
         fis.read(filebytes);
         OutputStream outputStream = response.getOutputStream();
+
+        if(sessionAttributes.isEncryption()){
+
+            filebytes =  AES.decrypt(filebytes, GoogleAuth.serverGoogleKey,GoogleAuth.ivectorGoogle);
+            //filebytes = AES.encrypt(filebytes,sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector()));
+        }
         response.setContentLength(filebytes.length);
         outputStream.write(filebytes);
         outputStream.close();
@@ -133,6 +199,13 @@ public class GoogleApiServiceImpl implements GoogleApiService {
     public void deleteFile(String fileId, TokenDto tokenDto) throws Exception {
         userService.verifyToken(tokenDto);
         SessionAttributes sessionAttributes = userService.getSessionAttributes(tokenDto.getSessionId());
+        User user = userRepository.findOne(sessionAttributes.getUserId());
+
+        fileId = new String(AES.decrypt(decoder.decodeBuffer(fileId),sessionAttributes.getAesKey(),new IvParameterSpec(sessionAttributes.getIvector())));
+        FileDescriptor fd = fileDescriptorRepository.getByGoogleId(fileId);
+        if(!checkAccess(fd.getId(),user))
+            return;
+
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
         Drive drive = driveService.getDrive(transport);
         FileDescriptor descriptor = fileDescriptorRepository.getByGoogleId(fileId);
@@ -159,10 +232,14 @@ public class GoogleApiServiceImpl implements GoogleApiService {
         return fileDescriptorDto;
     }
 
-    private List<FileDescriptorDto> mapToDto(List<FileDescriptor> descriptors) {
+    private List<FileDescriptorDto> mapToDto(List<FileDescriptor> descriptors,SessionAttributes sessionAttributes) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
         List<FileDescriptorDto> fileDescriptorDtos = new ArrayList<>();
-        for (FileDescriptor descriptor: descriptors) {
-            fileDescriptorDtos.add(mapToDto(descriptor));
+        for (FileDescriptor descriptor : descriptors) {
+            if(sessionAttributes.isEncryption()) {
+                fileDescriptorDtos.add(encryptFileDescriptorDto(mapToDto(descriptor), sessionAttributes));
+            }else{
+                fileDescriptorDtos.add(mapToDto(descriptor));
+            }
         }
         return fileDescriptorDtos;
     }

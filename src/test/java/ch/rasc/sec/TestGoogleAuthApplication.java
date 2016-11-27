@@ -26,6 +26,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
+import java.nio.charset.Charset;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -39,11 +40,14 @@ public class TestGoogleAuthApplication {
     private static BASE64Decoder decoder = new BASE64Decoder();
     private static RestTemplate restTemplate = new RestTemplate();
 
+    private static SecretKey secretKey;
+    private static byte[] ivector;
+
     public static void main(String[] args)
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
         //testFullCryptography();
-        //testWithoutPostCode();
-       testWithoutAll();
+        testWithoutPostCode();
+        //testWithoutAll();
 //        totpTest();
         //testFileUpload();
         //testGetFiles();
@@ -68,7 +72,8 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("rsakey"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        });
 
         UserDto userDto = new UserDto();
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
@@ -87,7 +92,8 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("login"),
                         HttpMethod.POST,
                         userDtoHttpEntity,
-                        new ParameterizedTypeReference<RestResponse<VerifyDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<VerifyDto>>() {
+                        });
 
         System.out.println(verifyDto.getBody().getData());
         byte[] secretBytes = decoder.decodeBuffer(verifyDto.getBody().getData().getSecret());
@@ -107,18 +113,19 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("rsakey"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        });
 
         byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
         byte[] encryptedIvector = decoder.decodeBuffer(keyDto.getBody().getData().getIvector());
         byte[] secretKeyBytes = RSA.decrypt(rsaEncryptedSecretKey, keyPair.getPrivate());
-        byte[] ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
-        SecretKey secretKey = new SecretKeySpec(secretKeyBytes, "AES");
+        ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
+        secretKey = new SecretKeySpec(secretKeyBytes, "AES");
         Scanner scanner = new Scanner(System.in);
         ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
         System.out.println(verifyDto.getBody().getData());
         byte[] secretBytes = AES.decrypt(decoder.decodeBuffer(verifyDto.getBody().getData().getSecret()), secretKey, new IvParameterSpec(ivector));
-        verifyToken(verifyDto.getBody().getData().getSessionId(), secretBytes);
+        verifyTokenEncrypted(verifyDto.getBody().getData().getSessionId(), secretBytes);
     }
 
     private static void testFullCryptography() throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
@@ -134,20 +141,21 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("rsakey"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        });
 
         byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
         byte[] encryptedIvector = decoder.decodeBuffer(keyDto.getBody().getData().getIvector());
         byte[] secretKeyBytes = RSA.decrypt(rsaEncryptedSecretKey, keyPair.getPrivate());
-        byte[] ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
-        SecretKey secretKey = new SecretKeySpec(secretKeyBytes, "AES");
+        ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
+        secretKey = new SecretKeySpec(secretKeyBytes, "AES");
         Scanner scanner = new Scanner(System.in);
         ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
         System.out.println(verifyDto.getBody().getData());
         ResponseEntity<RestResponse<TotpSecretDto>> totpSecretDto = verifyCode(ivector, secretKey, scanner, verifyDto);
         byte[] secretBytes = AES.decrypt(decoder.decodeBuffer(totpSecretDto.getBody().getData().getSecret()), secretKey, new IvParameterSpec(ivector));
         System.out.println(secretBytes);
-        verifyToken(totpSecretDto.getBody().getData().getSessionId(), secretBytes);
+        verifyTokenEncrypted(totpSecretDto.getBody().getData().getSessionId(), secretBytes);
     }
 
     private static ResponseEntity<RestResponse<TotpSecretDto>> verifyCode(byte[] ivector, SecretKey secretKey, Scanner scanner, ResponseEntity<RestResponse<VerifyDto>> verifyDto)
@@ -163,7 +171,8 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("verify"),
                         HttpMethod.POST,
                         verifyDtoHttpEntity,
-                        new ParameterizedTypeReference<RestResponse<TotpSecretDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<TotpSecretDto>>() {
+                        });
         System.out.println(totpSecretDto.getBody().getData());
         return totpSecretDto;
     }
@@ -174,10 +183,10 @@ public class TestGoogleAuthApplication {
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
         System.out.println("Enter login:");
         //
-        String login = "sergio.kiselev509@gmail.com";//scanner.nextLine();
+        String login = scanner.nextLine();
         System.out.println("Enter password:");
         //password
-        String password = "password"; //scanner.nextLine();
+        String password = scanner.nextLine();
         userDto.setLogin(encoder.encode(AES.encrypt(login.getBytes(), secretKey, new IvParameterSpec(ivector))));
         userDto.setPassword(encoder.encode(AES.encrypt(password.getBytes(), secretKey, new IvParameterSpec(ivector))));
 
@@ -186,29 +195,31 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("login"),
                         HttpMethod.POST,
                         userDtoHttpEntity,
-                        new ParameterizedTypeReference<RestResponse<VerifyDto>>() {});
+                        new ParameterizedTypeReference<RestResponse<VerifyDto>>() {
+                        });
     }
 
     private static void verifyToken(String sessionId, byte[] secretBytes)
             throws InvalidKeyException, NoSuchAlgorithmException, InterruptedException, IOException {
 
-            long totpCode = getCurrentCode(secretBytes);
-            System.out.println("CUrrent CODE: " + totpCode);
-            TokenDto tokenDto = new TokenDto();
-            tokenDto.setSessionId(sessionId);
-            tokenDto.setToken(totpCode);
-            System.out.println(tokenDto);
-            HttpEntity<TokenDto> tokenDtoHttpEntity = new HttpEntity<>(tokenDto);
-            ResponseEntity<RestResponse<String>> responseEntity = restTemplate
-                    .exchange(TestUtils.getUrl("token"),
-                            HttpMethod.POST,
-                            tokenDtoHttpEntity,
-                            new ParameterizedTypeReference<RestResponse<String>>() {});
-            System.out.println(responseEntity.getBody().getData());
+        long totpCode = getCurrentCode(secretBytes);
+        System.out.println("CUrrent CODE: " + totpCode);
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setSessionId(sessionId);
+        tokenDto.setToken(totpCode);
+        System.out.println(tokenDto);
+        HttpEntity<TokenDto> tokenDtoHttpEntity = new HttpEntity<>(tokenDto);
+        ResponseEntity<RestResponse<String>> responseEntity = restTemplate
+                .exchange(TestUtils.getUrl("token"),
+                        HttpMethod.POST,
+                        tokenDtoHttpEntity,
+                        new ParameterizedTypeReference<RestResponse<String>>() {
+                        });
+        System.out.println(responseEntity.getBody().getData());
 
         File file = new File("src\\main\\resources\\download\\gopnik.jpeg");
         FileInputStream inputStream = new FileInputStream(file);
-        byte[] fileBytes = new byte[(int)file.length()];
+        byte[] fileBytes = new byte[(int) file.length()];
         inputStream.read(fileBytes);
         HttpClient httpclient = new DefaultHttpClient();
         HttpPost httpPost = new HttpPost(TestUtils.getUrl("files?name=" + file.getName() +
@@ -224,7 +235,8 @@ public class TestGoogleAuthApplication {
                 .exchange(TestUtils.getUrl("files?sessionId=" + sessionId + "&token=" + totpCode),
                         HttpMethod.GET,
                         null,
-                        new ParameterizedTypeReference<RestResponse<List<FileDescriptorDto>>>() {});
+                        new ParameterizedTypeReference<RestResponse<List<FileDescriptorDto>>>() {
+                        });
         System.out.println(keyDto.getBody().getData().size());
         System.out.println(keyDto);
         FileDescriptorDto descriptorDto = keyDto.getBody().getData().get(0);
@@ -233,7 +245,7 @@ public class TestGoogleAuthApplication {
                 "?sessionId=" + sessionId + "&token=" + totpCode));
         HttpResponse response1 = client.execute(get);
         InputStream stream = response1.getEntity().getContent();
-        byte[] aaaa = new byte[(int)response1.getEntity().getContentLength()];
+        byte[] aaaa = new byte[(int) response1.getEntity().getContentLength()];
         stream.read(aaaa);
         FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
         stream1.write(aaaa);
@@ -248,5 +260,73 @@ public class TestGoogleAuthApplication {
         long totpCode = totpService.getCode(secretBytes, timeIndex);
         System.out.println(totpCode);
         return totpCode;
+    }
+
+
+    private static void verifyTokenEncrypted(String sessionId, byte[] secretBytes)
+            throws InvalidKeyException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException, NoSuchPaddingException {
+
+        long totpCode = getCurrentCode(secretBytes);
+        System.out.println("CUrrent CODE: " + totpCode);
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setSessionId(sessionId);
+        tokenDto.setToken(totpCode);
+        System.out.println(tokenDto);
+        HttpEntity<TokenDto> tokenDtoHttpEntity = new HttpEntity<>(tokenDto);
+        ResponseEntity<RestResponse<String>> responseEntity = restTemplate
+                .exchange(TestUtils.getUrl("token"),
+                        HttpMethod.POST,
+                        tokenDtoHttpEntity,
+                        new ParameterizedTypeReference<RestResponse<String>>() {
+                        });
+        System.out.println(responseEntity.getBody().getData());
+
+        File file = new File("src\\main\\resources\\download\\gopnik.jpeg");
+        File fileTemp = File.createTempFile("tmpfiletosend", file.getName());
+        FileInputStream inputStream = new FileInputStream(file);
+        byte[] fileBytes = new byte[(int) file.length()];
+        inputStream.read(fileBytes);
+        FileOutputStream outputStream = new FileOutputStream(fileTemp);
+        outputStream.write(AES.encrypt(fileBytes, secretKey, new IvParameterSpec(ivector)));
+        HttpClient httpclient = new DefaultHttpClient();
+        HttpPost httpPost = new HttpPost(TestUtils.getUrl("files?name=" + file.getName() +
+                "&sessionId=" + sessionId + "&token=" + totpCode));
+
+        FileBody uploadFilePart = new FileBody(fileTemp);
+        MultipartEntity reqEntity = new MultipartEntity();
+        reqEntity.addPart("file", uploadFilePart);
+        httpPost.setEntity(reqEntity);
+
+        HttpResponse response = httpclient.execute(httpPost);
+        ResponseEntity<RestResponse<List<FileDescriptorDto>>> keyDto = restTemplate
+                .exchange(TestUtils.getUrl("files?sessionId=" + sessionId + "&token=" + totpCode),
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<RestResponse<List<FileDescriptorDto>>>() {
+                        });
+        System.out.println(keyDto.getBody().getData().size());
+        System.out.println(keyDto);
+        FileDescriptorDto descriptorDto = decryptFileDescriptorDto(keyDto.getBody().getData().get(0));
+        System.out.println("FDD "+descriptorDto.getGoogleId()+" "+descriptorDto.getName());
+        HttpClient client = new DefaultHttpClient();
+        HttpGet get = new HttpGet(TestUtils.getUrl("files/" + encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector))) +
+                "?sessionId=" + sessionId + "&token=" + totpCode));
+        HttpResponse response1 = client.execute(get);
+        InputStream stream = response1.getEntity().getContent();
+        byte[] aaaa = new byte[(int) response1.getEntity().getContentLength()];
+        stream.read(aaaa);
+        FileOutputStream stream1 = new FileOutputStream("kek2.jpeg");
+        stream1.write(aaaa);
+        //stream1.write(AES.decrypt(aaaa,secretKey,new IvParameterSpec(ivector)));
+        System.out.println(aaaa.length);
+        restTemplate.delete(TestUtils.getUrl("files/" + encoder.encode(AES.encrypt(descriptorDto.getGoogleId().getBytes(),secretKey,new IvParameterSpec(ivector))) +
+              "?sessionId=" + sessionId + "&token=" + totpCode));
+    }
+
+    private static FileDescriptorDto decryptFileDescriptorDto(FileDescriptorDto fdd) throws IOException {
+        fdd.setGoogleId(new String(AES.decrypt(decoder.decodeBuffer(fdd.getGoogleId()), secretKey,new IvParameterSpec(ivector))));
+        fdd.setLink(new String(AES.decrypt(decoder.decodeBuffer(fdd.getLink()), secretKey,new IvParameterSpec(ivector))));;
+        fdd.setName(new String(AES.decrypt(decoder.decodeBuffer(fdd.getName()), secretKey,new IvParameterSpec(ivector))));
+        return fdd;
     }
 }

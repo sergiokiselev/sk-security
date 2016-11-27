@@ -13,9 +13,14 @@ import org.springframework.util.JdkIdGenerator;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+
 @SpringBootApplication
 @Import({SecurityConfig.class})
 public class GoogleAuth extends SpringBootServletInitializer {
+	public static SecretKey serverGoogleKey;
+	public static IvParameterSpec ivectorGoogle;
 
 	public static void main(String[] args) throws Exception {
 		SpringApplication.run(GoogleAuth.class, args);

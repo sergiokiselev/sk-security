@@ -12,7 +12,7 @@ import java.util.List;
  * Date: 11/21/2016.
  */
 public interface GoogleApiService {
-    FileDescriptorDto uploadFile(File file, String sessionId, long token, String name) throws Exception;
+    FileDescriptorDto uploadFile(byte[] bytes, String sessionId, long token, String name) throws Exception;
 
     List<FileDescriptorDto> getFilesList(TokenDto tokenDto) throws Exception;
 
