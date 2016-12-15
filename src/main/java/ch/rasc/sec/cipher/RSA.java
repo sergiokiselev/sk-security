@@ -1,14 +1,11 @@
-package ch.rasc.sec.cypher;
+package ch.rasc.sec.cipher;
 
 import java.security.*;
-import java.security.spec.MGF1ParameterSpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.OAEPParameterSpec;
-import javax.crypto.spec.PSource;
 
 public class RSA {
 

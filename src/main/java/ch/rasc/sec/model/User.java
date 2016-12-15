@@ -38,6 +38,9 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 	@Column
 	private Integer tries;
 
+	@Column
+	private byte[] rsaKey;
+
 	@Column(unique = true)
 	private String authSessionId;
 
@@ -45,10 +48,11 @@ public class User extends AbstractPersistable<Long> implements UserDetails {
 	@JoinTable(name = "user_group", joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "user_group_id", referencedColumnName = "id"))
 	private Set<UserGroup> userGroups;
 
-	public User(String login, String password, Set<GrantedAuthority> authorities, Integer tries) {
+	public User(String login, String password, Set<GrantedAuthority> authorities, Integer tries,byte[] rsaPublic) {
 		this.email = login;
 		this.password = password;
 		this.tries = tries;
+		this.rsaKey = rsaPublic;
 		//this.authorities = authorities;
 	}
 	

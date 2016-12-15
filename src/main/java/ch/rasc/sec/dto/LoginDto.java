@@ -9,8 +9,8 @@ import java.io.Serializable;
  * Date: 11/7/2016.
  */
 @Data
-public class RsaKeyDto implements Serializable {
-    private String rsaKey;
+public class LoginDto implements Serializable {
+    private String login;
 
     private boolean encryption;
 

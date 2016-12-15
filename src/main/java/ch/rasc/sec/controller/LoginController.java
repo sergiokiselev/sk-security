@@ -48,10 +48,10 @@ public class LoginController {
 		}
 	}
 
-	@RequestMapping(value = "/rsakey", method = RequestMethod.POST)
-	public RestResponse<AesKeyDto> getAesKey(@RequestBody RsaKeyDto rsaKey) {
+	@RequestMapping(value = "/logindto", method = RequestMethod.POST)
+	public RestResponse<AesKeyPartDto> getAesKey(@RequestBody LoginDto rsaKey) {
 		try {
-			return new RestResponse<>(userService.getAesKey(rsaKey));
+			return new RestResponse<>(userService.getAesKeyPart(rsaKey));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new RestResponse<>(new ErrorDto(e.getMessage()));
@@ -62,6 +62,16 @@ public class LoginController {
 	public RestResponse<String> verifyToken(@RequestBody TokenDto token) {
 		try {
 			return new RestResponse<>(userService.verifyToken(token));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new RestResponse<>(new ErrorDto(e.getMessage()));
+		}
+	}
+
+	@RequestMapping(value = "/dh", method = RequestMethod.POST)
+	public RestResponse<IVectorDto> getIVector(@RequestBody AesKeyPartDto aeskp) {
+		try {
+			return new RestResponse<>(userService.getIVector(aeskp));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new RestResponse<>(new ErrorDto(e.getMessage()));

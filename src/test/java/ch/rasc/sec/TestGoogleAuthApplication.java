@@ -1,14 +1,14 @@
 package ch.rasc.sec;
 
-import ch.rasc.sec.cypher.AES;
-import ch.rasc.sec.cypher.RSA;
+import ch.rasc.sec.cipher.AES;
+import ch.rasc.sec.cipher.DiffieHellman;
+import ch.rasc.sec.cipher.RSA;
 import ch.rasc.sec.dto.*;
 import ch.rasc.sec.dto.restresponse.RestResponse;
 import ch.rasc.sec.service.TOTPService;
 import ch.rasc.sec.service.impl.TOTPServiceImpl;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
@@ -21,16 +21,20 @@ import org.springframework.web.client.RestTemplate;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
-import java.nio.charset.Charset;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -44,10 +48,10 @@ public class TestGoogleAuthApplication {
     private static byte[] ivector;
 
     public static void main(String[] args)
-            throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
-        //testFullCryptography();
-        testWithoutPostCode();
-      //  testWithoutAll();
+            throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException, InvalidKeySpecException {
+        testFullCryptography();
+        //testWithoutPostCode();
+       // testWithoutAll();
 //        totpTest();
         //testFileUpload();
         //testGetFiles();
@@ -64,23 +68,25 @@ public class TestGoogleAuthApplication {
     }
 
     private static void testWithoutAll() throws IOException, InterruptedException, NoSuchAlgorithmException, InvalidKeyException {
-        RsaKeyDto rsaKeyDto = new RsaKeyDto();
+        LoginDto rsaKeyDto = new LoginDto();
         rsaKeyDto.setEncryption(false);
         rsaKeyDto.setPostCode(false);
-        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
-        ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
-                .exchange(TestUtils.getUrl("rsakey"),
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter login:");
+        //
+        String login = scanner.nextLine();
+        rsaKeyDto.setLogin(login);
+        HttpEntity<LoginDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
+        ResponseEntity<RestResponse<AesKeyPartDto>> keyDto = restTemplate
+                .exchange(TestUtils.getUrl("logindto"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        new ParameterizedTypeReference<RestResponse<AesKeyPartDto>>() {
                         });
 
         UserDto userDto = new UserDto();
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
-        System.out.println("Enter login:");
-        Scanner scanner = new Scanner(System.in);
         //sergio.kiselev509@gmail.com
-        String login = scanner.nextLine();
         System.out.println("Enter password:");
         //password
         String password = scanner.nextLine();
@@ -100,56 +106,119 @@ public class TestGoogleAuthApplication {
         verifyToken(verifyDto.getBody().getData().getSessionId(), secretBytes);
     }
 
-    private static void testWithoutPostCode() throws IOException, InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
-        KeyPair keyPair = RSA.generateKeyPair();
-        RsaKeyDto rsaKeyDto = new RsaKeyDto();
-        String encoded = encoder.encode(keyPair.getPublic().getEncoded());
+    private static void testWithoutPostCode() throws IOException, InterruptedException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InvalidKeySpecException {
+        //KeyPair keyPair = RSA.generateKeyPair();
+        LoginDto loginDto = new LoginDto();
+        //String encoded = encoder.encode(keyPair.getPublic().getEncoded());
 
-        rsaKeyDto.setRsaKey(encoded);
-        rsaKeyDto.setEncryption(true);
-        rsaKeyDto.setPostCode(false);
-        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
-        ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
-                .exchange(TestUtils.getUrl("rsakey"),
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter login:");
+        //
+        String login = scanner.nextLine();
+        loginDto.setLogin(login);
+        loginDto.setEncryption(true);
+        loginDto.setPostCode(false);
+        HttpEntity<LoginDto> encodedEntity = new HttpEntity<>(loginDto);
+        ResponseEntity<RestResponse<AesKeyPartDto>> keyDto = restTemplate
+                .exchange(TestUtils.getUrl("logindto"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        new ParameterizedTypeReference<RestResponse<AesKeyPartDto>>() {
                         });
 
-        byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
+        System.out.println("Enter private key path:");
+        //
+        String filepath = scanner.nextLine();
+        PrivateKey rsaPrivateKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Files.readAllBytes(Paths.get(filepath))));
+
+
+        PublicKey dhServerKey = DiffieHellman.getPublicKeyDecoded(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart2()),rsaPrivateKey)));
+        PublicKey rsaServerKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart2()),rsaPrivateKey))));
+        DiffieHellman.setDHParamSpec(((DHPublicKey)dhServerKey).getParams());
+        KeyPair dhKeyPair = DiffieHellman.generateKeyPair();
+        KeyAgreement dhKeyAgreement = DiffieHellman.generateKeyAgreement(dhKeyPair);
+        AesKeyPartDto clientDHdto = new AesKeyPartDto();
+        clientDHdto.setSessionId(keyDto.getBody().getData().getSessionId());
+        clientDHdto.setDhPublicPart1(encoder.encode(RSA.encrypt(Arrays.copyOfRange(dhKeyPair.getPublic().getEncoded(),0,200), rsaServerKey)));
+        clientDHdto.setDhPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(dhKeyPair.getPublic().getEncoded(),200,dhKeyPair.getPublic().getEncoded().length), rsaServerKey)));
+        /*byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
         byte[] encryptedIvector = decoder.decodeBuffer(keyDto.getBody().getData().getIvector());
         byte[] secretKeyBytes = RSA.decrypt(rsaEncryptedSecretKey, keyPair.getPrivate());
         ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
-        secretKey = new SecretKeySpec(secretKeyBytes, "AES");
-        Scanner scanner = new Scanner(System.in);
+        secretKey = new SecretKeySpec(secretKeyBytes, "AES");*/
+        byte[] sharedSecret = DiffieHellman.getSharedSecret(dhKeyAgreement,dhServerKey);
+        secretKey = DiffieHellman.getAESSecretKey(sharedSecret);
+        HttpEntity<AesKeyPartDto> dhEncodedEntity = new HttpEntity<>(clientDHdto);
+        ResponseEntity<RestResponse<IVectorDto>> ivectorDto = restTemplate
+                .exchange(TestUtils.getUrl("dh"),
+                        HttpMethod.POST,
+                        dhEncodedEntity,
+                        new ParameterizedTypeReference<RestResponse<IVectorDto>>() {
+                        });
+        ivector = RSA.decrypt(decoder.decodeBuffer(ivectorDto.getBody().getData().getIvector()),rsaPrivateKey);
         ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
         System.out.println(verifyDto.getBody().getData());
         byte[] secretBytes = AES.decrypt(decoder.decodeBuffer(verifyDto.getBody().getData().getSecret()), secretKey, new IvParameterSpec(ivector));
         verifyTokenEncrypted(verifyDto.getBody().getData().getSessionId(), secretBytes);
     }
 
-    private static void testFullCryptography() throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException {
-        KeyPair keyPair = RSA.generateKeyPair();
-        RsaKeyDto rsaKeyDto = new RsaKeyDto();
-        String encoded = encoder.encode(keyPair.getPublic().getEncoded());
+    private static byte[] mergeArrays(byte[] arr1, byte[] arr2){
+        byte[] newArr = new byte[arr1.length+arr2.length];
+        System.arraycopy(arr1,0,newArr,0,arr1.length);
+        System.arraycopy(arr2,0,newArr,arr1.length,arr2.length);
+        return newArr;
+    }
 
-        rsaKeyDto.setRsaKey(encoded);
-        rsaKeyDto.setEncryption(true);
-        rsaKeyDto.setPostCode(true);
-        HttpEntity<RsaKeyDto> encodedEntity = new HttpEntity<>(rsaKeyDto);
-        ResponseEntity<RestResponse<AesKeyDto>> keyDto = restTemplate
-                .exchange(TestUtils.getUrl("rsakey"),
+    private static void testFullCryptography() throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException, InvalidKeySpecException {
+        //KeyPair keyPair = RSA.generateKeyPair();
+        LoginDto loginDto = new LoginDto();
+        //String encoded = encoder.encode(keyPair.getPublic().getEncoded());
+
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter login:");
+        //
+        String login = scanner.nextLine();
+        loginDto.setLogin(login);
+        loginDto.setEncryption(true);
+        loginDto.setPostCode(true);
+        HttpEntity<LoginDto> encodedEntity = new HttpEntity<>(loginDto);
+        ResponseEntity<RestResponse<AesKeyPartDto>> keyDto = restTemplate
+                .exchange(TestUtils.getUrl("logindto"),
                         HttpMethod.POST,
                         encodedEntity,
-                        new ParameterizedTypeReference<RestResponse<AesKeyDto>>() {
+                        new ParameterizedTypeReference<RestResponse<AesKeyPartDto>>() {
                         });
 
-        byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
+        System.out.println("Enter private key path:");
+        //
+        String filepath = scanner.nextLine();
+        PrivateKey rsaPrivateKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Files.readAllBytes(Paths.get(filepath))));
+
+
+        PublicKey dhServerKey = DiffieHellman.getPublicKeyDecoded(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart2()),rsaPrivateKey)));
+        PublicKey rsaServerKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart2()),rsaPrivateKey))));
+        DiffieHellman.setDHParamSpec(((DHPublicKey)dhServerKey).getParams());
+        KeyPair dhKeyPair = DiffieHellman.generateKeyPair();
+        KeyAgreement dhKeyAgreement = DiffieHellman.generateKeyAgreement(dhKeyPair);
+        AesKeyPartDto clientDHdto = new AesKeyPartDto();
+        clientDHdto.setSessionId(keyDto.getBody().getData().getSessionId());
+        clientDHdto.setDhPublicPart1(encoder.encode(RSA.encrypt(Arrays.copyOfRange(dhKeyPair.getPublic().getEncoded(),0,200), rsaServerKey)));
+        clientDHdto.setDhPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(dhKeyPair.getPublic().getEncoded(),200,dhKeyPair.getPublic().getEncoded().length), rsaServerKey)));
+        /*byte[] rsaEncryptedSecretKey = decoder.decodeBuffer(keyDto.getBody().getData().getAesKey());
         byte[] encryptedIvector = decoder.decodeBuffer(keyDto.getBody().getData().getIvector());
         byte[] secretKeyBytes = RSA.decrypt(rsaEncryptedSecretKey, keyPair.getPrivate());
         ivector = RSA.decrypt(encryptedIvector, keyPair.getPrivate());
-        secretKey = new SecretKeySpec(secretKeyBytes, "AES");
-        Scanner scanner = new Scanner(System.in);
+        secretKey = new SecretKeySpec(secretKeyBytes, "AES");*/
+        byte[] sharedSecret = DiffieHellman.getSharedSecret(dhKeyAgreement,dhServerKey);
+        secretKey = DiffieHellman.getAESSecretKey(sharedSecret);
+        HttpEntity<AesKeyPartDto> dhEncodedEntity = new HttpEntity<>(clientDHdto);
+        ResponseEntity<RestResponse<IVectorDto>> ivectorDto = restTemplate
+                .exchange(TestUtils.getUrl("dh"),
+                        HttpMethod.POST,
+                        dhEncodedEntity,
+                        new ParameterizedTypeReference<RestResponse<IVectorDto>>() {
+                        });
+        ivector = RSA.decrypt(decoder.decodeBuffer(ivectorDto.getBody().getData().getIvector()),rsaPrivateKey);
         ResponseEntity<RestResponse<VerifyDto>> verifyDto = login(keyDto, ivector, secretKey, scanner);
         System.out.println(verifyDto.getBody().getData());
         ResponseEntity<RestResponse<TotpSecretDto>> totpSecretDto = verifyCode(ivector, secretKey, scanner, verifyDto);
@@ -177,7 +246,7 @@ public class TestGoogleAuthApplication {
         return totpSecretDto;
     }
 
-    private static ResponseEntity<RestResponse<VerifyDto>> login(ResponseEntity<RestResponse<AesKeyDto>> keyDto, byte[] ivector, SecretKey secretKey, Scanner scanner)
+    private static ResponseEntity<RestResponse<VerifyDto>> login(ResponseEntity<RestResponse<AesKeyPartDto>> keyDto, byte[] ivector, SecretKey secretKey, Scanner scanner)
             throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
         UserDto userDto = new UserDto();
         userDto.setSessionId(keyDto.getBody().getData().getSessionId());
