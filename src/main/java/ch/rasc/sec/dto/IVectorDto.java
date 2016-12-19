@@ -6,19 +6,12 @@ import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
- * This dto is used to transfer rsa encrypted
- * aes key data such as key and init vector
- *
- * @author Sergey Kiselev
+ * Created by 9480 on 12/14/2016.
  */
 @Data
-public class AesKeyDto implements Serializable {
-
+public class IVectorDto implements Serializable {
     @NotNull
     private String sessionId;
 
-    private String aesKey;
-
     private String ivector;
-
 }

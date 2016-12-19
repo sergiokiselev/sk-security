@@ -1,7 +1,7 @@
 package ch.rasc.sec.service.impl;
 
 import ch.rasc.sec.GoogleAuth;
-import ch.rasc.sec.cypher.AES;
+import ch.rasc.sec.cipher.AES;
 import ch.rasc.sec.dto.FileContentDto;
 import ch.rasc.sec.dto.FileDescriptorDto;
 import ch.rasc.sec.dto.TokenDto;

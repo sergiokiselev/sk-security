@@ -1,7 +1,9 @@
 package ch.rasc.sec.service.impl;
 
-import ch.rasc.sec.cypher.AES;
-import ch.rasc.sec.cypher.RSA;
+import ch.rasc.sec.GoogleAuth;
+import ch.rasc.sec.cipher.AES;
+import ch.rasc.sec.cipher.DiffieHellman;
+import ch.rasc.sec.cipher.RSA;
 import ch.rasc.sec.dto.*;
 import ch.rasc.sec.model.SessionAttributes;
 import ch.rasc.sec.model.User;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +31,11 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -167,24 +172,34 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public AesKeyDto getAesKey(RsaKeyDto rsaKey) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, NoSuchPaddingException {
-        SecretKey secretKey = AES.generateKey();
-        boolean encryption = rsaKey.isEncryption();
-        boolean postCode = rsaKey.isPostCode();
+    public AesKeyPartDto getAesKeyPart(LoginDto loginDto) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, NoSuchPaddingException {
+        //SecretKey secretKey = AES.generateKey();
+        boolean encryption = loginDto.isEncryption();
+        boolean postCode = loginDto.isPostCode();
         SessionAttributes attributes = getNewSessionAttributes();
         attributes.setPostCode(postCode);
         attributes.setEncryption(encryption);
-        AesKeyDto aesKD = new AesKeyDto();
+        AesKeyPartDto aesKD = new AesKeyPartDto();
         aesKD.setSessionId(attributes.getSessionId());
-        if (encryption) {
-            byte[] decodedKey = decoder.decodeBuffer(rsaKey.getRsaKey());
-            PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKey));
-            aesKD.setAesKey(encoder.encode(RSA.encrypt(secretKey.getEncoded(), publicKey)));
-            byte[] ivector = AES.generateIV(secretKey);
-            aesKD.setIvector(encoder.encode(RSA.encrypt(ivector, publicKey)));
-            attributes.setIvector(ivector);
-            attributes.setAesKey(secretKey);
+        User user = userRepository.findByEmail(loginDto.getLogin());
+        if (user == null) {
+            throw new UsernameNotFoundException("User with login " + loginDto.getLogin() + " was not found");
         }
+        attributes.setUserId(user.getId());
+        if (encryption) {
+            byte[] decodedKey =user.getRsaKey();
+            PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKey));
+            aesKD.setDhPublicPart1(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.dhKeyPair.getPublic().getEncoded(),0,200), publicKey)));
+            aesKD.setDhPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.dhKeyPair.getPublic().getEncoded(),200,GoogleAuth.dhKeyPair.getPublic().getEncoded().length), publicKey)));
+            aesKD.setRsaPublicPart1(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.rsaKeyPair.getPublic().getEncoded(),0,200), publicKey)));
+            aesKD.setRsaPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.rsaKeyPair.getPublic().getEncoded(),200,GoogleAuth.rsaKeyPair.getPublic().getEncoded().length), publicKey)));
+            //aesKD.setAesKey(encoder.encode(RSA.encrypt(secretKey.getEncoded(), publicKey)));
+            //byte[] ivector = AES.generateIV(secretKey);
+            //aesKD.setIvector(encoder.encode(RSA.encrypt(ivector, publicKey)));
+            //attributes.setIvector(ivector);
+            //attributes.setAesKey(secretKey);
+        }
+       // this.sessionAttributes.put(attributes.getSessionId(),attributes);
         return aesKD;
     }
 
@@ -203,5 +218,32 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public SessionAttributes getSessionAttributes(String sessionId) {
         return sessionAttributes.get(sessionId);
+    }
+
+    @Override
+    public IVectorDto getIVector(AesKeyPartDto aeskp) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NoSuchPaddingException, IOException {
+        SessionAttributes sessionAttributes = this.sessionAttributes.get(aeskp.getSessionId());
+        User user = userRepository.findOne(sessionAttributes.getUserId());
+
+        PublicKey dhClientKey = DiffieHellman.getPublicKeyDecoded(mergeArrays(RSA.decrypt(decoder.decodeBuffer(aeskp.getDhPublicPart1()),GoogleAuth.rsaKeyPair.getPrivate()),RSA.decrypt(decoder.decodeBuffer(aeskp.getDhPublicPart2()),GoogleAuth.rsaKeyPair.getPrivate())));
+        byte[] sharedSecret = DiffieHellman.getSharedSecret(GoogleAuth.keyAgreement,dhClientKey);
+        SecretKey secretKey = DiffieHellman.getAESSecretKey(sharedSecret);
+
+        IVectorDto ivecDto = new IVectorDto();
+        ivecDto.setSessionId(aeskp.getSessionId());
+        byte[] ivector = AES.generateIV(secretKey);
+        sessionAttributes.setAesKey(secretKey);
+        sessionAttributes.setIvector(ivector);
+        PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(user.getRsaKey()));
+        ivecDto.setIvector(encoder.encode(RSA.encrypt(ivector,publicKey)));
+
+        return ivecDto;
+    }
+
+    private static byte[] mergeArrays(byte[] arr1, byte[] arr2){
+        byte[] newArr = new byte[arr1.length+arr2.length];
+        System.arraycopy(arr1,0,newArr,0,arr1.length);
+        System.arraycopy(arr2,0,newArr,arr1.length,arr2.length);
+        return newArr;
     }
 }

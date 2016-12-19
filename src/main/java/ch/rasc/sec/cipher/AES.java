@@ -1,4 +1,4 @@
-package ch.rasc.sec.cypher;
+package ch.rasc.sec.cipher;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

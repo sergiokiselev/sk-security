@@ -21,9 +21,11 @@ public interface UserService {
 
     TotpSecretDto verifyCode(String sessionId, String code) throws NoSuchAlgorithmException, InvalidKeyException, IOException, AuthenticationException, InvalidAlgorithmParameterException, NoSuchPaddingException;
 
-    AesKeyDto getAesKey(RsaKeyDto rsaKey) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, NoSuchPaddingException;
+    AesKeyPartDto getAesKeyPart(LoginDto rsaKey) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, NoSuchPaddingException;
 
     String verifyToken(TokenDto token) throws NoSuchAlgorithmException, InvalidKeyException, AuthenticationException;
 
     SessionAttributes getSessionAttributes(String sessionId);
+
+    IVectorDto getIVector(AesKeyPartDto aeskp) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NoSuchPaddingException, IOException;
 }
