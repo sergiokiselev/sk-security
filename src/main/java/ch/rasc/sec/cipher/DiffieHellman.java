@@ -26,6 +26,10 @@ public class DiffieHellman {
         dhSkipParamSpec = (DHParameterSpec) params.getParameterSpec(DHParameterSpec.class);
     }
 
+    public static DHParameterSpec getParams(){
+        return dhSkipParamSpec;
+    }
+
     public static void useSkipParamSpec() {
         dhSkipParamSpec = new DHParameterSpec(skip1024Modulus,
                 skip1024Base);

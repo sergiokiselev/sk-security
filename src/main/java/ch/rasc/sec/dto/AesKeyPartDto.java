@@ -23,4 +23,7 @@ public class AesKeyPartDto implements Serializable {
     private String rsaPublicPart1;
     private String rsaPublicPart2;
 
+    private String gDHParam;
+    private String pDHParam;
+
 }
