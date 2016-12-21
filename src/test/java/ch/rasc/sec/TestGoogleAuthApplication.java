@@ -25,9 +25,11 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
@@ -49,8 +51,8 @@ public class TestGoogleAuthApplication {
 
     public static void main(String[] args)
             throws IOException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InterruptedException, InvalidKeySpecException {
-        testFullCryptography();
-        //testWithoutPostCode();
+        //testFullCryptography();
+        testWithoutPostCode();
        // testWithoutAll();
 //        totpTest();
         //testFileUpload();
@@ -134,7 +136,10 @@ public class TestGoogleAuthApplication {
 
         PublicKey dhServerKey = DiffieHellman.getPublicKeyDecoded(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getDhPublicPart2()),rsaPrivateKey)));
         PublicKey rsaServerKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(mergeArrays(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart1()),rsaPrivateKey),RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getRsaPublicPart2()),rsaPrivateKey))));
+        BigInteger g = new BigInteger(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getGDHParam()),rsaPrivateKey));
+        BigInteger p = new BigInteger(RSA.decrypt(decoder.decodeBuffer(keyDto.getBody().getData().getPDHParam()),rsaPrivateKey));
         DiffieHellman.setDHParamSpec(((DHPublicKey)dhServerKey).getParams());
+        //DiffieHellman.setDHParamSpec(new DHParameterSpec(g,p));
         KeyPair dhKeyPair = DiffieHellman.generateKeyPair();
         KeyAgreement dhKeyAgreement = DiffieHellman.generateKeyAgreement(dhKeyPair);
         AesKeyPartDto clientDHdto = new AesKeyPartDto();

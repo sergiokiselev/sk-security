@@ -193,6 +193,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             aesKD.setDhPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.dhKeyPair.getPublic().getEncoded(),200,GoogleAuth.dhKeyPair.getPublic().getEncoded().length), publicKey)));
             aesKD.setRsaPublicPart1(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.rsaKeyPair.getPublic().getEncoded(),0,200), publicKey)));
             aesKD.setRsaPublicPart2(encoder.encode(RSA.encrypt(Arrays.copyOfRange(GoogleAuth.rsaKeyPair.getPublic().getEncoded(),200,GoogleAuth.rsaKeyPair.getPublic().getEncoded().length), publicKey)));
+            aesKD.setGDHParam(encoder.encode(RSA.encrypt(DiffieHellman.getParams().getG().toByteArray(),publicKey)));
+            aesKD.setPDHParam(encoder.encode(RSA.encrypt(DiffieHellman.getParams().getP().toByteArray(),publicKey)));
             //aesKD.setAesKey(encoder.encode(RSA.encrypt(secretKey.getEncoded(), publicKey)));
             //byte[] ivector = AES.generateIV(secretKey);
             //aesKD.setIvector(encoder.encode(RSA.encrypt(ivector, publicKey)));
